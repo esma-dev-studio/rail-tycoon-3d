@@ -29,15 +29,38 @@ function mulberry32(seed: number): () => number {
   };
 }
 
-/** 地形マップ(装飾のみ・全タイル建設可能) */
+/**
+ * 地形マップ。全タイル建設可能だが、water(川)の上は「はし」になり建設費が高い。
+ * 川は x=9〜11 のあいだを蛇行して南北に流れる(町とは重ならない)。
+ */
 export function generateTerrain(): Map<NodeKey, TerrainKind> {
   const rng = mulberry32(20240711);
   const terrain = new Map<NodeKey, TerrainKind>();
+
+  // 川の経路を先に決める
+  const water = new Set<NodeKey>();
+  let rx = 10;
+  for (let z = 0; z < GRID_H; z++) {
+    water.add(key(rx, z));
+    const r = rng();
+    if (r < 0.3 && rx > 9) {
+      rx--;
+      water.add(key(rx, z)); // 蛇行した行は2タイルにして川をつなげる
+    } else if (r > 0.7 && rx < 11) {
+      rx++;
+      water.add(key(rx, z));
+    }
+  }
+
   for (let x = 0; x < GRID_W; x++) {
     for (let z = 0; z < GRID_H; z++) {
       const k = key(x, z);
       if (TOWN_BY_NODE.has(k)) {
         terrain.set(k, 'grass');
+        continue;
+      }
+      if (water.has(k)) {
+        terrain.set(k, 'water');
         continue;
       }
       const r = rng();

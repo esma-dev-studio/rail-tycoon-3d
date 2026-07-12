@@ -8,18 +8,46 @@ import { GRID_W, GRID_H } from '../data/config';
 import { worldPos, worldToNode } from '../utils/grid';
 import { useGameStore } from '../store/gameStore';
 
-function Trees() {
+function hashKey(k: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < k.length; i++) {
+    h ^= k.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+const FLOWER_COLORS = ['#ff8fb3', '#ffd24a', '#ff9f6b', '#c8a2f0'];
+
+/** 地形の装飾 — 木(森)・岩(丘)・花(草原の一部)・川の水面 */
+function Decor() {
   const terrain = useGameStore((s) => s.terrain);
-  const spots: [number, number, number][] = [];
+  const trees: [number, number, number][] = [];
+  const rocks: [number, number, number][] = [];
+  const waters: [number, number, number][] = [];
+  const flowers: { p: [number, number, number]; c: string }[] = [];
   for (const [k, kind] of terrain) {
-    if (kind !== 'forest') continue;
     const [xs, zs] = k.split(',');
-    spots.push(worldPos(parseInt(xs, 10), parseInt(zs, 10)));
+    const p = worldPos(parseInt(xs, 10), parseInt(zs, 10));
+    if (kind === 'forest') trees.push(p);
+    else if (kind === 'hill') rocks.push(p);
+    else if (kind === 'water') waters.push(p);
+    else if (hashKey(k) % 9 === 0) {
+      flowers.push({ p, c: FLOWER_COLORS[hashKey(k) % FLOWER_COLORS.length] });
+    }
   }
   return (
     <group>
-      {spots.map((p, i) => (
-        <group key={i} position={[p[0], 0, p[2]]}>
+      {/* 川 */}
+      {waters.map((p, i) => (
+        <mesh key={`w${i}`} position={[p[0], 0.008, p[2]]} rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[1.0, 1.0]} />
+          <meshStandardMaterial color="#57b6f0" roughness={0.25} metalness={0.1} />
+        </mesh>
+      ))}
+      {/* 木 */}
+      {trees.map((p, i) => (
+        <group key={`t${i}`} position={[p[0], 0, p[2]]}>
           <mesh position={[0, 0.14, 0]} castShadow>
             <cylinderGeometry args={[0.05, 0.06, 0.28, 6]} />
             <meshStandardMaterial color="#6b4a30" roughness={0.9} />
@@ -29,6 +57,20 @@ function Trees() {
             <meshStandardMaterial color="#3e8f4c" roughness={0.85} />
           </mesh>
         </group>
+      ))}
+      {/* 岩 */}
+      {rocks.map((p, i) => (
+        <mesh key={`r${i}`} position={[p[0], 0.09, p[2]]} scale={[1, 0.65, 1]} castShadow>
+          <dodecahedronGeometry args={[0.18, 0]} />
+          <meshStandardMaterial color="#9aa2ab" roughness={0.95} />
+        </mesh>
+      ))}
+      {/* 花 */}
+      {flowers.map((f, i) => (
+        <mesh key={`f${i}`} position={[f.p[0] + 0.25, 0.045, f.p[2] - 0.22]}>
+          <sphereGeometry args={[0.045, 8, 8]} />
+          <meshStandardMaterial color={f.c} roughness={0.6} />
+        </mesh>
       ))}
     </group>
   );
@@ -71,6 +113,12 @@ export function Ground() {
         <meshStandardMaterial color="#5aa763" roughness={1} />
       </mesh>
 
+      {/* ジオラマの土台(側面が土に見える箱) */}
+      <mesh position={[0, -0.63, 0]}>
+        <boxGeometry args={[GRID_W + 2, 1.2, GRID_H + 2]} />
+        <meshStandardMaterial color="#8a5f3f" roughness={0.95} />
+      </mesh>
+
       {/* タイルグリッド */}
       <Grid
         position={[0, 0.005, 0]}
@@ -86,7 +134,7 @@ export function Ground() {
         infiniteGrid={false}
       />
 
-      <Trees />
+      <Decor />
 
       {/* タイル選択用の透明な当たり判定面 */}
       <mesh

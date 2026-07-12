@@ -1,8 +1,10 @@
 // ============================================================================
 // 3Dシーン — Canvas・ライト・影・全メッシュ・シミュレーション駆動をまとめる
 // ============================================================================
-import { Canvas } from '@react-three/fiber';
+import { useRef } from 'react';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { ContactShadows } from '@react-three/drei';
+import type { Group } from 'three';
 import { CameraController } from './CameraController';
 import { Ground } from './Ground';
 import { TrackMeshes } from './TrackMeshes';
@@ -12,6 +14,45 @@ import { BuildOverlay } from './BuildOverlay';
 import { FareFloats } from './FareFloats';
 import { SimulationDriver } from './SimulationDriver';
 import { useGameStore } from '../store/gameStore';
+
+/** ゆっくり流れる雲 */
+function Clouds() {
+  const ref = useRef<Group>(null);
+  useFrame((_, dt) => {
+    const g = ref.current;
+    if (!g) return;
+    g.children.forEach((c, i) => {
+      c.position.x += dt * (0.12 + i * 0.05);
+      if (c.position.x > 17) c.position.x = -17;
+    });
+  });
+  const clouds: { p: [number, number, number]; s: number }[] = [
+    { p: [-7, 6.4, -5], s: 1.0 },
+    { p: [3, 7.4, 4], s: 1.4 },
+    { p: [9, 6.8, -8], s: 0.85 },
+    { p: [-12, 7.8, 7], s: 1.2 },
+  ];
+  return (
+    <group ref={ref}>
+      {clouds.map((c, i) => (
+        <group key={i} position={c.p} scale={c.s}>
+          <mesh scale={[1.6, 0.55, 0.9]}>
+            <sphereGeometry args={[0.7, 12, 12]} />
+            <meshStandardMaterial color="#ffffff" roughness={1} />
+          </mesh>
+          <mesh position={[0.7, 0.15, 0.1]} scale={[1, 0.6, 0.8]}>
+            <sphereGeometry args={[0.5, 12, 12]} />
+            <meshStandardMaterial color="#ffffff" roughness={1} />
+          </mesh>
+          <mesh position={[-0.75, 0.1, -0.05]} scale={[0.9, 0.55, 0.8]}>
+            <sphereGeometry args={[0.45, 12, 12]} />
+            <meshStandardMaterial color="#ffffff" roughness={1} />
+          </mesh>
+        </group>
+      ))}
+    </group>
+  );
+}
 
 export function GameScene() {
   const clearSelection = useGameStore((s) => s.clearSelection);
@@ -47,6 +88,7 @@ export function GameScene() {
       <CameraController />
       <SimulationDriver />
 
+      <Clouds />
       <Ground />
       <TrackMeshes />
       <TownMeshes />

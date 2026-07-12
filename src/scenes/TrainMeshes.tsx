@@ -22,6 +22,45 @@ function shade(hex: string, amount: number): string {
   return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
 }
 
+function Wheels() {
+  const positions: [number, number][] = [
+    [0.16, 0.09],
+    [0.16, -0.09],
+    [-0.16, 0.09],
+    [-0.16, -0.09],
+  ];
+  return (
+    <group>
+      {positions.map(([x, z], i) => (
+        <mesh key={i} position={[x, -0.1, z]} rotation={[0, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[0.05, 0.05, 0.028, 12]} />
+          <meshStandardMaterial color="#2b2f36" roughness={0.6} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+/** 機関車の顔(前面の目) — 子どもがキャラクターとして親しめるように */
+function Face() {
+  return (
+    <group position={[0, 0.045, 0.152]}>
+      {[-0.065, 0.065].map((x, i) => (
+        <group key={i} position={[x, 0, 0]}>
+          <mesh>
+            <sphereGeometry args={[0.032, 10, 10]} />
+            <meshStandardMaterial color="#ffffff" roughness={0.35} />
+          </mesh>
+          <mesh position={[0, 0, 0.022]}>
+            <sphereGeometry args={[0.015, 8, 8]} />
+            <meshStandardMaterial color="#20242c" roughness={0.3} />
+          </mesh>
+        </group>
+      ))}
+    </group>
+  );
+}
+
 function Car({ z, color, loco }: { z: number; color: string; loco?: boolean }) {
   return (
     <group position={[0, 0, z]}>
@@ -40,6 +79,8 @@ function Car({ z, color, loco }: { z: number; color: string; loco?: boolean }) {
           <meshStandardMaterial color={shade(color, -40)} metalness={0.3} roughness={0.5} />
         </mesh>
       )}
+      {loco && <Face />}
+      <Wheels />
     </group>
   );
 }

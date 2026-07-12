@@ -4,25 +4,22 @@
 //  - 列車の連続的な位置は sim(simInstance) 側
 // ============================================================================
 import { create } from 'zustand';
-import {
-  START_MONEY,
-  TRACK_COST,
-  TRACK_REFUND,
-  TRAIN_COST,
-  LINE_COLORS,
-} from '../data/config';
+import { START_MONEY, TRACK_REFUND, TRAIN_COST, LINE_COLORS } from '../data/config';
 import { TOWNS, TOWNS_BY_ID, TOWN_BY_NODE, generateTerrain } from '../data/world';
 import { MISSIONS } from '../data/missions';
 import { key, edgeKey, manhattanPath, neighbors4 } from '../utils/grid';
 import { bfsPath } from '../sim/pathfinding';
+import { trackEdgeCost } from '../sim/economy';
 import { sim } from '../sim/simInstance';
 import { addTrainRuntime, removeTrainsOfLine } from '../sim/simulation';
+import { play, isMuted, setMuted } from '../utils/sound';
 import type {
   BuildMode,
   Line,
   NodeKey,
   Selection,
   TerrainKind,
+  ToastKind,
   Town,
   TrainDef,
 } from '../types/game';
@@ -47,7 +44,8 @@ export interface GameState {
   lineAnchorTown: string | null;
   selection: Selection;
   speed: number;
-  toast: { msg: string; id: number } | null;
+  muted: boolean;
+  toast: { msg: string; kind: ToastKind; id: number } | null;
   revision: number; // ライブ表示更新用
   // ミッション
   missionIndex: number; // いま挑戦中のミッション(MISSIONS のインデックス)
@@ -75,7 +73,8 @@ export interface GameState {
   dismissClear: () => void;
   commitTick: (dtGame: number) => void;
   setSpeed: (s: number) => void;
-  pushToast: (msg: string) => void;
+  toggleMute: () => void;
+  pushToast: (msg: string, kind?: ToastKind) => void;
   clearToast: () => void;
   reset: () => void;
 }
@@ -97,7 +96,8 @@ function initialState() {
     lineAnchorTown: null as string | null,
     selection: null as Selection,
     speed: 1,
-    toast: null as { msg: string; id: number } | null,
+    muted: isMuted(),
+    toast: null as { msg: string; kind: ToastKind; id: number } | null,
     revision: 0,
     missionIndex: 0,
     gameCleared: false,
@@ -110,7 +110,10 @@ function initialState() {
 export const useGameStore = create<GameState>((set, get) => ({
   ...initialState(),
 
-  setBuildMode: (m) => set({ buildMode: m, anchorNode: null, lineAnchorTown: null }),
+  setBuildMode: (m) => {
+    play('click');
+    set({ buildMode: m, anchorNode: null, lineAnchorTown: null });
+  },
   setHover: (k) => set({ hoverNode: k }),
 
   tileClick: (node) => {
@@ -145,30 +148,39 @@ export const useGameStore = create<GameState>((set, get) => ({
   select: (sel) => set({ selection: sel }),
 
   buildTrackPath: (a, b) => {
-    const { trackEdges, money } = get();
+    const { trackEdges, money, terrain } = get();
     const path = manhattanPath(a, b);
+    let cost = 0;
     const newEdges: string[] = [];
     for (let i = 0; i < path.length - 1; i++) {
       const ek = edgeKey(path[i], path[i + 1]);
-      if (!trackEdges.has(ek)) newEdges.push(ek);
+      if (!trackEdges.has(ek)) {
+        newEdges.push(ek);
+        cost += trackEdgeCost(path[i], path[i + 1], terrain);
+      }
     }
     if (newEdges.length === 0) return;
-    const cost = newEdges.length * TRACK_COST;
     if (money < cost) {
-      get().pushToast(`😢 お金が たりないよ！（${cost.toLocaleString()}円 いるよ）`);
+      play('error');
+      get().pushToast(`😢 お金が たりないよ！（${cost.toLocaleString()}円 いるよ）`, 'bad');
       return;
     }
     const next = new Set(trackEdges);
     for (const e of newEdges) next.add(e);
+    play('build');
     set({ trackEdges: next, money: money - cost });
   },
 
   demolishNode: (node) => {
-    const { trackEdges, money, lines, trainDefs } = get();
+    const { trackEdges, money, lines, trainDefs, terrain } = get();
     const toRemove: string[] = [];
+    let removedCost = 0;
     for (const nb of neighbors4(node)) {
       const ek = edgeKey(node, nb);
-      if (trackEdges.has(ek)) toRemove.push(ek);
+      if (trackEdges.has(ek)) {
+        toRemove.push(ek);
+        removedCost += trackEdgeCost(node, nb, terrain);
+      }
     }
     if (toRemove.length === 0) return;
     const removed = new Set(toRemove);
@@ -183,7 +195,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     for (const ln of broken) removeTrainsOfLine(sim, ln.id);
     const nextLines = lines.filter((ln) => !broken.includes(ln));
     const nextTrainDefs = trainDefs.filter((td) => nextLines.some((l) => l.id === td.lineId));
-    const refund = Math.round(toRemove.length * TRACK_COST * TRACK_REFUND);
+    const refund = Math.round(removedCost * TRACK_REFUND);
+    play('demolish');
     set({
       trackEdges: next,
       money: money + refund,
@@ -201,7 +214,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     const { trackEdges, lines, lineSeq } = get();
     const path = bfsPath(trackEdges, key(a.x, a.z), key(b.x, b.z));
     if (!path) {
-      get().pushToast('😮 その 2つの 町は まだ せんろで つながってないよ');
+      play('error');
+      get().pushToast('😮 その 2つの 町は まだ せんろで つながってないよ', 'bad');
       return;
     }
     const stations = path.filter((n) => TOWN_BY_NODE.has(n)).map((n) => TOWN_BY_NODE.get(n)!.id);
@@ -211,7 +225,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const line: Line = { id, name: `ろせん${seq}`, color, pathNodes: path, stations };
     set({ lines: [...lines, line], lineSeq: seq, selection: { type: 'line', id } });
     get().buyTrain(id);
-    get().pushToast('🚆 電車が はしりはじめたよ！');
+    get().pushToast('🚆 電車が はしりはじめたよ！', 'good');
   },
 
   buyTrain: (lineId) => {
@@ -219,13 +233,15 @@ export const useGameStore = create<GameState>((set, get) => ({
     const line = lines.find((l) => l.id === lineId);
     if (!line) return;
     if (money < TRAIN_COST) {
-      get().pushToast(`😢 お金が たりないよ！（電車は ${TRAIN_COST.toLocaleString()}円）`);
+      play('error');
+      get().pushToast(`😢 お金が たりないよ！（電車は ${TRAIN_COST.toLocaleString()}円）`, 'bad');
       return;
     }
     const seq = trainSeq + 1;
     const id = `tr${seq}`;
     const atStart = trainDefs.filter((td) => td.lineId === lineId).length % 2 === 0;
     addTrainRuntime(sim, id, lineId, line.pathNodes, line.stations, line.color, atStart);
+    play('whistle');
     set({
       trainDefs: [...trainDefs, { id, lineId, color: line.color }],
       money: money - TRAIN_COST,
@@ -243,12 +259,14 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
   },
 
-  deliver: (fare) =>
+  deliver: (fare) => {
+    play('coin');
     set((s) => ({
       money: s.money + fare,
       totalDelivered: s.totalDelivered + 1,
       totalRevenue: s.totalRevenue + fare,
-    })),
+    }));
+  },
 
   completeMission: (index) => {
     const s = get();
@@ -265,12 +283,14 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
     if (cur < max) return;
     const isLast = index === MISSIONS.length - 1;
+    play('fanfare');
     set({ missionIndex: index + 1, money: s.money + m.reward, gameCleared: isLast || s.gameCleared });
     if (!isLast) {
       get().pushToast(
         m.reward > 0
           ? `🎉 ミッションクリア！ ごほうび ${m.reward.toLocaleString()}円`
           : '🎉 ミッションクリア！',
+        'good',
       );
     }
   },
@@ -278,9 +298,20 @@ export const useGameStore = create<GameState>((set, get) => ({
   dismissClear: () => set({ gameCleared: false }),
 
   commitTick: (dtGame) => set((s) => ({ clock: s.clock + dtGame, revision: s.revision + 1 })),
-  setSpeed: (s) => set({ speed: s }),
+  setSpeed: (s) => {
+    play('click');
+    set({ speed: s });
+  },
 
-  pushToast: (msg) => set((s) => ({ toast: { msg, id: s.toastSeq + 1 }, toastSeq: s.toastSeq + 1 })),
+  toggleMute: () => {
+    const next = !get().muted;
+    setMuted(next);
+    if (!next) play('click');
+    set({ muted: next });
+  },
+
+  pushToast: (msg, kind = 'info') =>
+    set((s) => ({ toast: { msg, kind, id: s.toastSeq + 1 }, toastSeq: s.toastSeq + 1 })),
   clearToast: () => set({ toast: null }),
 
   reset: () => {

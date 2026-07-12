@@ -2,7 +2,7 @@
 // あそびかた — ❓ボタンで開く3ステップの説明
 // ============================================================================
 import { useState } from 'react';
-import { TRACK_COST, TRAIN_COST } from '../data/config';
+import { TRACK_COST, BRIDGE_COST, TRAIN_COST } from '../data/config';
 
 export function HelpModal() {
   const [open, setOpen] = useState(false);
@@ -24,7 +24,9 @@ export function HelpModal() {
                   <br />
                   下の「せんろ」を おして、じめんを 2かい クリック！
                   <br />
-                  <small>1マス {TRACK_COST}円だよ</small>
+                  <small>
+                    1マス {TRACK_COST}円だよ（川を わたる はしは {BRIDGE_COST}円）
+                  </small>
                 </div>
               </li>
               <li>

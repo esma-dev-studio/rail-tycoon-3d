@@ -2,7 +2,10 @@
 // Rail Tycoon 3D — 型定義
 // ============================================================================
 
-export type TerrainKind = 'grass' | 'forest' | 'hill';
+export type TerrainKind = 'grass' | 'forest' | 'hill' | 'water';
+
+/** トーストの見た目(ふつう/うれしい/こまった) */
+export type ToastKind = 'info' | 'good' | 'bad';
 
 /** グリッドノードのキー `${x},${z}` */
 export type NodeKey = string;

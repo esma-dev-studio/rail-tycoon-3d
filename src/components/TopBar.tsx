@@ -18,6 +18,8 @@ export function TopBar() {
   const totalDelivered = useGameStore((s) => s.totalDelivered);
   const speed = useGameStore((s) => s.speed);
   const setSpeed = useGameStore((s) => s.setSpeed);
+  const muted = useGameStore((s) => s.muted);
+  const toggleMute = useGameStore((s) => s.toggleMute);
   const reset = useGameStore((s) => s.reset);
   useGameStore((s) => s.revision); // ライブ更新
 
@@ -38,7 +40,10 @@ export function TopBar() {
       <div className="stats">
         <div className="stat stat--money">
           <span className="stat__label">💰 お金</span>
-          <span className={`stat__value ${money < 0 ? 'is-neg' : ''}`}>{money.toLocaleString()}円</span>
+          {/* key を金額にして、変わるたびにポップアニメを再生 */}
+          <span key={money} className={`stat__value stat__value--pop ${money < 0 ? 'is-neg' : ''}`}>
+            {money.toLocaleString()}円
+          </span>
         </div>
         <div className="stat">
           <span className="stat__label">📅 ひにち</span>
@@ -46,7 +51,9 @@ export function TopBar() {
         </div>
         <div className="stat">
           <span className="stat__label">🙂 はこんだ人</span>
-          <span className="stat__value">{totalDelivered.toLocaleString()}人</span>
+          <span key={totalDelivered} className="stat__value stat__value--pop">
+            {totalDelivered.toLocaleString()}人
+          </span>
         </div>
         <div className="stat">
           <span className="stat__label">🧍 まってる人</span>
@@ -65,6 +72,13 @@ export function TopBar() {
             {SPEED_LABELS[s].icon}
           </button>
         ))}
+        <button
+          className="speed__btn"
+          onClick={toggleMute}
+          title={muted ? 'おとを だす' : 'おとを けす'}
+        >
+          {muted ? '🔇' : '🔊'}
+        </button>
         <button className="speed__btn speed__reset" onClick={onReset} title="さいしょから">
           ↺
         </button>

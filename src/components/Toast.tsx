@@ -16,7 +16,7 @@ export function Toast() {
 
   if (!toast) return null;
   return (
-    <div className="toast" key={toast.id}>
+    <div className={`toast toast--${toast.kind}`} key={toast.id}>
       {toast.msg}
     </div>
   );

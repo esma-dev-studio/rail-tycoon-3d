@@ -53,6 +53,37 @@ function buildingsFor(t: Town): Building[] {
   return out;
 }
 
+const PEOPLE_COLORS = ['#e6484d', '#3bb0f2', '#f2a13b', '#57c98a', '#b07fe6', '#f25fa0', '#4dd0c0', '#5a6acf'];
+const MAX_VISIBLE_PEOPLE = 8;
+
+/** 待っているお客さんのミニ人形(人数ぶん、最大8人) */
+function WaitingPeople({ count }: { count: number }) {
+  const n = Math.min(count, MAX_VISIBLE_PEOPLE);
+  return (
+    <group>
+      {Array.from({ length: n }, (_, i) => {
+        const ang = 1.1 + i * 0.55;
+        const r = 0.5 + (i % 2) * 0.09;
+        const x = Math.cos(ang) * r;
+        const z = Math.sin(ang) * r;
+        const color = PEOPLE_COLORS[i % PEOPLE_COLORS.length];
+        return (
+          <group key={i} position={[x, 0.06, z]}>
+            <mesh position={[0, 0.055, 0]} castShadow>
+              <cylinderGeometry args={[0.032, 0.042, 0.11, 8]} />
+              <meshStandardMaterial color={color} roughness={0.7} />
+            </mesh>
+            <mesh position={[0, 0.14, 0]} castShadow>
+              <sphereGeometry args={[0.038, 10, 10]} />
+              <meshStandardMaterial color="#ffdcb8" roughness={0.7} />
+            </mesh>
+          </group>
+        );
+      })}
+    </group>
+  );
+}
+
 function TownItem({ town }: { town: Town }) {
   const buildMode = useGameStore((s) => s.buildMode);
   const tileClick = useGameStore((s) => s.tileClick);
@@ -101,8 +132,16 @@ function TownItem({ town }: { town: Town }) {
           <meshStandardMaterial color={b.color} roughness={0.6} metalness={0.05} />
         </mesh>
       ))}
-      {/* ラベル */}
-      <Html position={[0, 0.95, 0]} center distanceFactor={12} zIndexRange={[20, 0]}>
+      {/* 待っているお客さん */}
+      <WaitingPeople count={waiting} />
+      {/* ラベル(wrapperClass でクリックを遮らないようにする) */}
+      <Html
+        position={[0, 0.95, 0]}
+        center
+        distanceFactor={12}
+        zIndexRange={[12, 0]}
+        wrapperClass="html-pass-through"
+      >
         <div className={`town-label${highlight ? ' is-active' : ''}`}>
           <span className="town-label__name">{town.name}</span>
           {waiting > 0 && <span className="town-label__wait">🧍{waiting}人</span>}

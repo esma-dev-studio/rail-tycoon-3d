@@ -3,7 +3,7 @@
 // ============================================================================
 import { useMemo } from 'react';
 import { nodeWorld, manhattanPath, edgeKey } from '../utils/grid';
-import { TRACK_COST } from '../data/config';
+import { trackEdgeCost } from '../sim/economy';
 import { useGameStore } from '../store/gameStore';
 
 function TileMark({ node, color, opacity = 0.35 }: { node: string; color: string; opacity?: number }) {
@@ -35,20 +35,21 @@ export function BuildOverlay() {
   const hoverNode = useGameStore((s) => s.hoverNode);
   const anchorNode = useGameStore((s) => s.anchorNode);
   const trackEdges = useGameStore((s) => s.trackEdges);
+  const terrain = useGameStore((s) => s.terrain);
   const money = useGameStore((s) => s.money);
 
   const preview = useMemo(() => {
     if (buildMode !== 'track' || !anchorNode || !hoverNode || anchorNode === hoverNode) return null;
     const path = manhattanPath(anchorNode, hoverNode);
     const segs: { a: string; b: string; isNew: boolean }[] = [];
-    let newCount = 0;
+    let cost = 0;
     for (let i = 0; i < path.length - 1; i++) {
       const isNew = !trackEdges.has(edgeKey(path[i], path[i + 1]));
-      if (isNew) newCount++;
+      if (isNew) cost += trackEdgeCost(path[i], path[i + 1], terrain);
       segs.push({ a: path[i], b: path[i + 1], isNew });
     }
-    return { segs, affordable: money >= newCount * TRACK_COST };
-  }, [buildMode, anchorNode, hoverNode, trackEdges, money]);
+    return { segs, affordable: money >= cost };
+  }, [buildMode, anchorNode, hoverNode, trackEdges, terrain, money]);
 
   if (buildMode !== 'track' && buildMode !== 'demolish') return null;
 

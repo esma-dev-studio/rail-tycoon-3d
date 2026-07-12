@@ -13,8 +13,15 @@ export function FareFloats() {
   return (
     <group>
       {fareFloats.map((f) => (
-        <Html key={f.id} position={[f.x, 1.15, f.z]} center distanceFactor={12} zIndexRange={[30, 0]}>
-          <div className="fare-float">+{f.amount.toLocaleString()}円</div>
+        <Html
+          key={f.id}
+          position={[f.x, 1.15, f.z]}
+          center
+          distanceFactor={12}
+          zIndexRange={[14, 0]}
+          wrapperClass="html-pass-through"
+        >
+          <div className="fare-float">💰 +{f.amount.toLocaleString()}円</div>
         </Html>
       ))}
     </group>

@@ -1,17 +1,21 @@
 // ============================================================================
 // クリア画面 — 全ミッション達成のお祝い
 // ============================================================================
+import { useMemo } from 'react';
 import { useGameStore } from '../store/gameStore';
+import { ConfettiRain, bigBurst } from './Confetti';
 
 export function ClearOverlay() {
   const gameCleared = useGameStore((s) => s.gameCleared);
   const dismissClear = useGameStore((s) => s.dismissClear);
   const totalDelivered = useGameStore((s) => s.totalDelivered);
   const money = useGameStore((s) => s.money);
+  const pieces = useMemo(() => bigBurst(), []);
   if (!gameCleared) return null;
 
   return (
     <div className="clear">
+      <ConfettiRain pieces={pieces} />
       <div className="clear__card">
         <div className="clear__confetti">🎉🎊🎉</div>
         <div className="clear__trophy">🏆</div>

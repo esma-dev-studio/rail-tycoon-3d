@@ -8,6 +8,7 @@ export const TILE = 1; // ワールド単位/タイル
 // 小学2年生向け: 数字はぜんぶキリのいい値にする
 export const START_MONEY = 10000;
 export const TRACK_COST = 100; // 線路1タイルあたり(1マス100円で暗算しやすく)
+export const BRIDGE_COST = 300; // 川をわたる「はし」1マスあたり
 export const TRACK_REFUND = 0.5; // 撤去時の払い戻し率
 export const TRAIN_COST = 5000;
 

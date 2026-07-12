@@ -7,6 +7,7 @@ import { InspectorPanel } from './InspectorPanel';
 import { MissionPanel } from './MissionPanel';
 import { ClearOverlay } from './ClearOverlay';
 import { HelpModal } from './HelpModal';
+import { Confetti } from './Confetti';
 import { Toast } from './Toast';
 
 export function Layout() {
@@ -18,6 +19,7 @@ export function Layout() {
       <BuildToolbar />
       <HelpModal />
       <Toast />
+      <Confetti />
       <ClearOverlay />
     </>
   );
