@@ -26,7 +26,7 @@ function Trees() {
           </mesh>
           <mesh position={[0, 0.42, 0]} castShadow>
             <coneGeometry args={[0.26, 0.6, 7]} />
-            <meshStandardMaterial color="#3f7a45" roughness={0.85} />
+            <meshStandardMaterial color="#3e8f4c" roughness={0.85} />
           </mesh>
         </group>
       ))}
@@ -68,7 +68,7 @@ export function Ground() {
       {/* ベース面 */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
         <planeGeometry args={[GRID_W + 2, GRID_H + 2]} />
-        <meshStandardMaterial color="#39533a" roughness={1} />
+        <meshStandardMaterial color="#5aa763" roughness={1} />
       </mesh>
 
       {/* タイルグリッド */}
@@ -77,10 +77,10 @@ export function Ground() {
         args={[GRID_W, GRID_H]}
         cellSize={1}
         cellThickness={0.7}
-        cellColor="#2c4630"
+        cellColor="#4c9455"
         sectionSize={4}
         sectionThickness={1.2}
-        sectionColor="#4a6a4e"
+        sectionColor="#7cc487"
         fadeDistance={40}
         fadeStrength={1}
         infiniteGrid={false}

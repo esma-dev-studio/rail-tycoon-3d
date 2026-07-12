@@ -105,7 +105,7 @@ function TownItem({ town }: { town: Town }) {
       <Html position={[0, 0.95, 0]} center distanceFactor={12} zIndexRange={[20, 0]}>
         <div className={`town-label${highlight ? ' is-active' : ''}`}>
           <span className="town-label__name">{town.name}</span>
-          {waiting > 0 && <span className="town-label__wait">{waiting}人待ち</span>}
+          {waiting > 0 && <span className="town-label__wait">🧍{waiting}人</span>}
         </div>
       </Html>
     </group>

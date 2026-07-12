@@ -1,12 +1,16 @@
 // ============================================================================
-// 上部バー — 資金・日数・輸送実績・再生速度
+// 上部バー — お金・日にち・はこんだ人数・スピード(小2向けのことばで表示)
 // ============================================================================
 import { SECONDS_PER_DAY, SPEEDS } from '../data/config';
 import { useGameStore } from '../store/gameStore';
 import { sim } from '../sim/simInstance';
-import { totalWaiting, totalOnboard } from '../sim/simulation';
+import { totalWaiting } from '../sim/simulation';
 
-const SPEED_LABELS: Record<number, string> = { 0: '⏸', 1: '▶', 3: '⏩' };
+const SPEED_LABELS: Record<number, { icon: string; title: string }> = {
+  0: { icon: '⏸', title: 'とめる' },
+  1: { icon: '▶', title: 'ふつう' },
+  3: { icon: '⏩', title: 'はやい' },
+};
 
 export function TopBar() {
   const money = useGameStore((s) => s.money);
@@ -19,33 +23,34 @@ export function TopBar() {
 
   const day = Math.floor(clock / SECONDS_PER_DAY) + 1;
   const waiting = totalWaiting(sim);
-  const onboard = totalOnboard(sim);
+
+  const onReset = () => {
+    if (window.confirm('さいしょから やりなおす？')) reset();
+  };
 
   return (
     <div className="topbar">
       <div className="brand">
         <span className="brand__logo">🚆</span>
-        <span className="brand__name">Rail Tycoon 3D</span>
+        <span className="brand__name">でんしゃタイクーン3D</span>
       </div>
 
       <div className="stats">
-        <div className="stat">
-          <span className="stat__label">資金</span>
-          <span className={`stat__value ${money < 0 ? 'is-neg' : ''}`}>¥{money.toLocaleString()}</span>
+        <div className="stat stat--money">
+          <span className="stat__label">💰 お金</span>
+          <span className={`stat__value ${money < 0 ? 'is-neg' : ''}`}>{money.toLocaleString()}円</span>
         </div>
         <div className="stat">
-          <span className="stat__label">日数</span>
-          <span className="stat__value">{day}日目</span>
+          <span className="stat__label">📅 ひにち</span>
+          <span className="stat__value">{day}日め</span>
         </div>
         <div className="stat">
-          <span className="stat__label">輸送人数</span>
+          <span className="stat__label">🙂 はこんだ人</span>
           <span className="stat__value">{totalDelivered.toLocaleString()}人</span>
         </div>
         <div className="stat">
-          <span className="stat__label">待ち / 乗車中</span>
-          <span className="stat__value">
-            {waiting} / {onboard}
-          </span>
+          <span className="stat__label">🧍 まってる人</span>
+          <span className="stat__value">{waiting}人</span>
         </div>
       </div>
 
@@ -55,12 +60,12 @@ export function TopBar() {
             key={s}
             className={`speed__btn ${speed === s ? 'is-active' : ''}`}
             onClick={() => setSpeed(s)}
-            title={s === 0 ? '一時停止' : `速度 ×${s}`}
+            title={SPEED_LABELS[s].title}
           >
-            {SPEED_LABELS[s]}
+            {SPEED_LABELS[s].icon}
           </button>
         ))}
-        <button className="speed__btn speed__reset" onClick={reset} title="最初からやり直す">
+        <button className="speed__btn speed__reset" onClick={onReset} title="さいしょから">
           ↺
         </button>
       </div>

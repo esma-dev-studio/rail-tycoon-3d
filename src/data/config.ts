@@ -5,19 +5,20 @@ export const GRID_W = 16;
 export const GRID_H = 16;
 export const TILE = 1; // ワールド単位/タイル
 
-export const START_MONEY = 30000;
-export const TRACK_COST = 120; // 線路1タイルあたり
+// 小学2年生向け: 数字はぜんぶキリのいい値にする
+export const START_MONEY = 10000;
+export const TRACK_COST = 100; // 線路1タイルあたり(1マス100円で暗算しやすく)
 export const TRACK_REFUND = 0.5; // 撤去時の払い戻し率
-export const TRAIN_COST = 6000;
+export const TRAIN_COST = 5000;
 
 export const TRAIN_CAPACITY = 20;
 export const TRAIN_SPEED = 2.4; // タイル/秒(1x時)
 export const DWELL_TIME = 0.9; // 駅での停車時間(秒)
 
-export const FARE_BASE = 40;
-export const FARE_PER_TILE = 22;
+export const FARE_BASE = 100;
+export const FARE_PER_TILE = 30;
 
-export const SPAWN_INTERVAL = 3.0; // 乗客発生間隔(秒, 1x)
+export const SPAWN_INTERVAL = 2.2; // 乗客発生間隔(秒, 1x)
 export const MAX_WAITING = 40; // 町ごとの待ち乗客の上限
 
 export const SECONDS_PER_DAY = 18;

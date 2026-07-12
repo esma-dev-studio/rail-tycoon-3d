@@ -1,22 +1,24 @@
 // ============================================================================
-// 下部ツールバー — 建設モード切替 + 操作ヒント
+// 下部ツールバー — モード切替 + いくらかかるかの案内(小2向け)
 // ============================================================================
+import { useMemo } from 'react';
 import { TRACK_COST, TRAIN_COST } from '../data/config';
+import { edgeKey, manhattanPath } from '../utils/grid';
 import { useGameStore } from '../store/gameStore';
 import type { BuildMode } from '../types/game';
 
 const MODES: { mode: BuildMode; icon: string; label: string }[] = [
-  { mode: 'inspect', icon: '👆', label: '選択' },
-  { mode: 'track', icon: '🛤', label: '線路' },
-  { mode: 'line', icon: '🧭', label: '路線' },
-  { mode: 'demolish', icon: '⛏', label: '撤去' },
+  { mode: 'inspect', icon: '👆', label: 'えらぶ' },
+  { mode: 'track', icon: '🛤', label: 'せんろ' },
+  { mode: 'line', icon: '🚆', label: '電車' },
+  { mode: 'demolish', icon: '💥', label: 'こわす' },
 ];
 
 const HINTS: Record<BuildMode, string> = {
-  inspect: '町・列車・路線をクリックして詳細を表示',
-  track: `2点をクリックして線路を敷設(1マス ¥${TRACK_COST})。連続でクリックすると延長`,
-  line: `起点と終点の駅をクリックして路線を開設。列車1両 ¥${TRAIN_COST.toLocaleString()}が自動購入`,
-  demolish: '線路をクリックで撤去(建設費の50%を返金)',
+  inspect: '町や 電車を クリックすると くわしく 見られるよ',
+  track: `じめんを クリックして せんろを つくろう！（1マス ${TRACK_COST}円）`,
+  line: `町を 2つ クリックすると 電車が はしるよ！（電車 1だい ${TRAIN_COST.toLocaleString()}円）`,
+  demolish: 'せんろを クリックすると こわせるよ（お金が はんぶん もどる）',
 };
 
 export function BuildToolbar() {
@@ -24,13 +26,35 @@ export function BuildToolbar() {
   const setBuildMode = useGameStore((s) => s.setBuildMode);
   const lineAnchorTown = useGameStore((s) => s.lineAnchorTown);
   const anchorNode = useGameStore((s) => s.anchorNode);
+  const hoverNode = useGameStore((s) => s.hoverNode);
+  const trackEdges = useGameStore((s) => s.trackEdges);
+  const money = useGameStore((s) => s.money);
+
+  // いま敷こうとしている線路のマス数と値段
+  const quote = useMemo(() => {
+    if (buildMode !== 'track' || !anchorNode || !hoverNode || anchorNode === hoverNode) return null;
+    const path = manhattanPath(anchorNode, hoverNode);
+    let n = 0;
+    for (let i = 0; i < path.length - 1; i++) {
+      if (!trackEdges.has(edgeKey(path[i], path[i + 1]))) n++;
+    }
+    if (n === 0) return null;
+    const cost = n * TRACK_COST;
+    return { n, cost, ok: money >= cost };
+  }, [buildMode, anchorNode, hoverNode, trackEdges, money]);
 
   let hint = HINTS[buildMode];
-  if (buildMode === 'line' && lineAnchorTown) hint = '終点の駅をクリック(同じ駅で取り消し)';
-  if (buildMode === 'track' && anchorNode) hint = '次の点をクリックして線路を延ばす';
+  if (buildMode === 'line' && lineAnchorTown) hint = 'つぎに ゴールの 町を クリック！（おなじ町で やめられるよ）';
+  else if (buildMode === 'track' && anchorNode && !quote) hint = 'つぎの ばしょを クリックすると せんろが のびるよ';
 
   return (
     <div className="toolbar">
+      {quote && (
+        <div className={`quote ${quote.ok ? '' : 'is-over'}`}>
+          🛤 せんろ {quote.n}マス ＝ <b>{quote.cost.toLocaleString()}円</b>
+          {quote.ok ? '' : '　😢 お金が たりない！'}
+        </div>
+      )}
       <div className="toolbar__modes">
         {MODES.map((m) => (
           <button

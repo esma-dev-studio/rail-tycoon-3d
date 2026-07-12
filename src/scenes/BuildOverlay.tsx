@@ -52,19 +52,19 @@ export function BuildOverlay() {
 
   if (buildMode !== 'track' && buildMode !== 'demolish') return null;
 
-  const hoverColor = buildMode === 'demolish' ? '#ff5a5a' : '#69d68a';
+  const hoverColor = buildMode === 'demolish' ? '#ff3b3b' : '#ffffff';
 
   return (
     <group>
-      {anchorNode && buildMode === 'track' && <TileMark node={anchorNode} color="#ffd24a" opacity={0.5} />}
-      {hoverNode && <TileMark node={hoverNode} color={hoverColor} />}
+      {anchorNode && buildMode === 'track' && <TileMark node={anchorNode} color="#ff9f1a" opacity={0.6} />}
+      {hoverNode && <TileMark node={hoverNode} color={hoverColor} opacity={0.45} />}
       {preview?.segs.map((s, i) => (
         <PreviewSeg
           key={i}
           a={s.a}
           b={s.b}
-          color={preview.affordable ? '#69d68a' : '#ff5a5a'}
-          opacity={s.isNew ? 0.75 : 0.3}
+          color={preview.affordable ? '#ffd24a' : '#ff4d4d'}
+          opacity={s.isNew ? 0.85 : 0.3}
         />
       ))}
     </group>

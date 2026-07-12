@@ -9,6 +9,7 @@ import { TrackMeshes } from './TrackMeshes';
 import { TownMeshes } from './TownMeshes';
 import { TrainMeshes } from './TrainMeshes';
 import { BuildOverlay } from './BuildOverlay';
+import { FareFloats } from './FareFloats';
 import { SimulationDriver } from './SimulationDriver';
 import { useGameStore } from '../store/gameStore';
 
@@ -23,14 +24,15 @@ export function GameScene() {
       camera={{ position: [11, 15, 17], fov: 42 }}
       onPointerMissed={() => clearSelection()}
     >
-      <color attach="background" args={['#0e1420']} />
-      <fog attach="fog" args={['#0e1420', 30, 60]} />
+      {/* 明るい昼の空(子ども向け) */}
+      <color attach="background" args={['#8fd3ff']} />
+      <fog attach="fog" args={['#8fd3ff', 34, 70]} />
 
-      <hemisphereLight intensity={0.55} color="#cfe0ff" groundColor="#26331f" />
-      <ambientLight intensity={0.22} />
+      <hemisphereLight intensity={0.75} color="#ffffff" groundColor="#9adf9f" />
+      <ambientLight intensity={0.35} />
       <directionalLight
         position={[9, 15, 6]}
-        intensity={1.15}
+        intensity={1.2}
         castShadow
         shadow-mapSize={[2048, 2048]}
         shadow-camera-near={1}
@@ -50,8 +52,9 @@ export function GameScene() {
       <TownMeshes />
       <TrainMeshes />
       <BuildOverlay />
+      <FareFloats />
 
-      <ContactShadows position={[0, 0.015, 0]} opacity={0.38} scale={26} blur={2.4} far={7} />
+      <ContactShadows position={[0, 0.015, 0]} opacity={0.3} scale={26} blur={2.4} far={7} />
     </Canvas>
   );
 }

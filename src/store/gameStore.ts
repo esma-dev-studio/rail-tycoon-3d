@@ -12,6 +12,7 @@ import {
   LINE_COLORS,
 } from '../data/config';
 import { TOWNS, TOWNS_BY_ID, TOWN_BY_NODE, generateTerrain } from '../data/world';
+import { MISSIONS } from '../data/missions';
 import { key, edgeKey, manhattanPath, neighbors4 } from '../utils/grid';
 import { bfsPath } from '../sim/pathfinding';
 import { sim } from '../sim/simInstance';
@@ -48,6 +49,9 @@ export interface GameState {
   speed: number;
   toast: { msg: string; id: number } | null;
   revision: number; // ライブ表示更新用
+  // ミッション
+  missionIndex: number; // いま挑戦中のミッション(MISSIONS のインデックス)
+  gameCleared: boolean; // 全ミッションクリアの祝福画面を表示中か
   // 連番
   lineSeq: number;
   trainSeq: number;
@@ -67,6 +71,8 @@ export interface GameState {
   buyTrain: (lineId: string) => void;
   deleteLine: (lineId: string) => void;
   deliver: (fare: number) => void;
+  completeMission: (index: number) => void;
+  dismissClear: () => void;
   commitTick: (dtGame: number) => void;
   setSpeed: (s: number) => void;
   pushToast: (msg: string) => void;
@@ -93,6 +99,8 @@ function initialState() {
     speed: 1,
     toast: null as { msg: string; id: number } | null,
     revision: 0,
+    missionIndex: 0,
+    gameCleared: false,
     lineSeq: 0,
     trainSeq: 0,
     toastSeq: 0,
@@ -147,7 +155,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (newEdges.length === 0) return;
     const cost = newEdges.length * TRACK_COST;
     if (money < cost) {
-      get().pushToast('資金が足りません');
+      get().pushToast(`😢 お金が たりないよ！（${cost.toLocaleString()}円 いるよ）`);
       return;
     }
     const next = new Set(trackEdges);
@@ -183,7 +191,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       trainDefs: nextTrainDefs,
       selection: null,
     });
-    if (broken.length) get().pushToast(`${broken.length}路線を撤去しました`);
+    if (broken.length) get().pushToast('💥 せんろを こわしたので ろせんも なくなったよ');
   },
 
   createLine: (aTownId, bTownId) => {
@@ -193,16 +201,17 @@ export const useGameStore = create<GameState>((set, get) => ({
     const { trackEdges, lines, lineSeq } = get();
     const path = bfsPath(trackEdges, key(a.x, a.z), key(b.x, b.z));
     if (!path) {
-      get().pushToast('2駅が線路でつながっていません');
+      get().pushToast('😮 その 2つの 町は まだ せんろで つながってないよ');
       return;
     }
     const stations = path.filter((n) => TOWN_BY_NODE.has(n)).map((n) => TOWN_BY_NODE.get(n)!.id);
     const seq = lineSeq + 1;
     const id = `ln${seq}`;
     const color = LINE_COLORS[(seq - 1) % LINE_COLORS.length];
-    const line: Line = { id, name: `路線${seq}`, color, pathNodes: path, stations };
+    const line: Line = { id, name: `ろせん${seq}`, color, pathNodes: path, stations };
     set({ lines: [...lines, line], lineSeq: seq, selection: { type: 'line', id } });
     get().buyTrain(id);
+    get().pushToast('🚆 電車が はしりはじめたよ！');
   },
 
   buyTrain: (lineId) => {
@@ -210,7 +219,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const line = lines.find((l) => l.id === lineId);
     if (!line) return;
     if (money < TRAIN_COST) {
-      get().pushToast('列車を買う資金が足りません');
+      get().pushToast(`😢 お金が たりないよ！（電車は ${TRAIN_COST.toLocaleString()}円）`);
       return;
     }
     const seq = trainSeq + 1;
@@ -240,6 +249,33 @@ export const useGameStore = create<GameState>((set, get) => ({
       totalDelivered: s.totalDelivered + 1,
       totalRevenue: s.totalRevenue + fare,
     })),
+
+  completeMission: (index) => {
+    const s = get();
+    if (s.missionIndex !== index || index >= MISSIONS.length) return;
+    const m = MISSIONS[index];
+    // 二重発火や誤発火を防ぐため、ストア側でも達成を検証する
+    const [cur, max] = m.progress({
+      money: s.money,
+      totalDelivered: s.totalDelivered,
+      trackEdges: s.trackEdges,
+      lines: s.lines,
+      trainDefs: s.trainDefs,
+      towns: s.towns,
+    });
+    if (cur < max) return;
+    const isLast = index === MISSIONS.length - 1;
+    set({ missionIndex: index + 1, money: s.money + m.reward, gameCleared: isLast || s.gameCleared });
+    if (!isLast) {
+      get().pushToast(
+        m.reward > 0
+          ? `🎉 ミッションクリア！ ごほうび ${m.reward.toLocaleString()}円`
+          : '🎉 ミッションクリア！',
+      );
+    }
+  },
+
+  dismissClear: () => set({ gameCleared: false }),
 
   commitTick: (dtGame) => set((s) => ({ clock: s.clock + dtGame, revision: s.revision + 1 })),
   setSpeed: (s) => set({ speed: s }),

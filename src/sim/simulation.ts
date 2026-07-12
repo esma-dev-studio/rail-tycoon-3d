@@ -118,14 +118,14 @@ function handleStop(
   sim: SimState,
   tr: TrainRuntime,
   town: Town,
-  onDeliver: (fare: number) => void,
+  onDeliver: (fare: number, townId: string) => void,
 ): void {
   // 降車(目的地に到着)
   const remain: Passenger[] = [];
   for (const p of tr.load) {
     if (p.toTownId === town.id) {
       const from = TOWNS_BY_ID.get(p.fromTownId);
-      if (from) onDeliver(fareBetween(from, town));
+      if (from) onDeliver(fareBetween(from, town), town.id);
     } else {
       remain.push(p);
     }
@@ -148,7 +148,7 @@ function stepTrain(
   sim: SimState,
   tr: TrainRuntime,
   dt: number,
-  onDeliver: (fare: number) => void,
+  onDeliver: (fare: number, townId: string) => void,
 ): void {
   if (tr.dwell > 0) {
     tr.dwell -= dt;
@@ -178,7 +178,11 @@ function stepTrain(
   updatePos(tr);
 }
 
-export function stepTrains(sim: SimState, dt: number, onDeliver: (fare: number) => void): void {
+export function stepTrains(
+  sim: SimState,
+  dt: number,
+  onDeliver: (fare: number, townId: string) => void,
+): void {
   for (const tr of sim.trains.values()) stepTrain(sim, tr, dt, onDeliver);
 }
 

@@ -5,6 +5,9 @@ import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { sim } from '../sim/simInstance';
 import { spawnPassengers, stepTrains } from '../sim/simulation';
+import { pushFareFloat } from '../sim/fareFloats';
+import { TOWNS_BY_ID } from '../data/world';
+import { worldPos } from '../utils/grid';
 import { useGameStore } from '../store/gameStore';
 
 const UI_INTERVAL = 0.2; // 実時間0.2秒ごとにUIを更新
@@ -20,7 +23,14 @@ export function SimulationDriver() {
 
     if (dtGame > 0) {
       spawnPassengers(sim, dtGame);
-      stepTrains(sim, dtGame, st.deliver);
+      stepTrains(sim, dtGame, (fare, townId) => {
+        st.deliver(fare);
+        const town = TOWNS_BY_ID.get(townId);
+        if (town) {
+          const w = worldPos(town.x, town.z);
+          pushFareFloat(townId, w[0], w[2], fare);
+        }
+      });
     }
 
     realAcc.current += clamped;

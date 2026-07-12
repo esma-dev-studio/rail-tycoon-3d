@@ -5,12 +5,13 @@ import { GRID_W, GRID_H } from './config';
 import { key } from '../utils/grid';
 import type { NodeKey, TerrainKind, Town } from '../types/game';
 
+// 町の名前は小2でも読めるように、ひらがな+1・2年生の漢字だけにする
 export const TOWNS: Town[] = [
   { id: 't_midori', name: 'みどり町', x: 2, z: 3, size: 3, color: '#e6a24a' },
-  { id: 't_aoba', name: 'あおば', x: 13, z: 3, size: 2, color: '#5aa0e0' },
-  { id: 't_chuo', name: '中央市', x: 8, z: 8, size: 3, color: '#e2e2e6' },
-  { id: 't_hibari', name: 'ひばり', x: 3, z: 12, size: 2, color: '#b07fe6' },
-  { id: 't_minato', name: 'みなと', x: 13, z: 13, size: 3, color: '#57c98a' },
+  { id: 't_aoba', name: 'あおば町', x: 13, z: 3, size: 2, color: '#5aa0e0' },
+  { id: 't_chuo', name: 'まんなか町', x: 8, z: 8, size: 3, color: '#e2e2e6' },
+  { id: 't_hibari', name: 'ひばり村', x: 3, z: 12, size: 2, color: '#b07fe6' },
+  { id: 't_minato', name: 'みなと町', x: 13, z: 13, size: 3, color: '#57c98a' },
 ];
 
 /** 町ノード → 町ID */
