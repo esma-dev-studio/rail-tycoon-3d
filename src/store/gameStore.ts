@@ -1,12 +1,16 @@
 // ============================================================================
-// 状態管理 (Zustand)
-//  - 金額・路線・列車定義・線路・選択・建設モード・時計など「離散的」な状態を保持
-//  - 列車の連続的な位置は sim(simInstance) 側
+// ゲーム全体の状態
+// 町づくり・ちょきん・保存までを、1つの予測しやすい状態として管理する。
 // ============================================================================
 import { create } from 'zustand';
 import { START_MONEY, TRACK_REFUND, TRAIN_COST, LINE_COLORS } from '../data/config';
 import { TOWNS, TOWNS_BY_ID, TOWN_BY_NODE, generateTerrain } from '../data/world';
 import { MISSIONS } from '../data/missions';
+import {
+  SAVINGS_GOALS,
+  townLevelFor,
+  type TownProgress,
+} from '../data/progression';
 import { key, edgeKey, manhattanPath, neighbors4 } from '../utils/grid';
 import { bfsPath } from '../sim/pathfinding';
 import { trackEdgeCost } from '../sim/economy';
@@ -25,19 +29,22 @@ import type {
 } from '../types/game';
 
 export interface GameState {
-  // 静的
   towns: Town[];
   terrain: Map<NodeKey, TerrainKind>;
-  // 経済
+
   money: number;
+  bestMoney: number;
   totalDelivered: number;
   totalRevenue: number;
-  clock: number; // ゲーム内秒
-  // 建設物
+  lastIncome: { amount: number; id: number } | null;
+  clock: number;
+  townProgress: Record<string, TownProgress>;
+  savingsGoalIndex: number;
+
   trackEdges: Set<string>;
   lines: Line[];
   trainDefs: TrainDef[];
-  // UI/操作
+
   buildMode: BuildMode;
   anchorNode: NodeKey | null;
   hoverNode: NodeKey | null;
@@ -46,16 +53,14 @@ export interface GameState {
   speed: number;
   muted: boolean;
   toast: { msg: string; kind: ToastKind; id: number } | null;
-  revision: number; // ライブ表示更新用
-  // ミッション
-  missionIndex: number; // いま挑戦中のミッション(MISSIONS のインデックス)
-  gameCleared: boolean; // 全ミッションクリアの祝福画面を表示中か
-  // 連番
+  revision: number;
+
+  missionIndex: number;
+  gameCleared: boolean;
   lineSeq: number;
   trainSeq: number;
   toastSeq: number;
 
-  // アクション
   setBuildMode: (m: BuildMode) => void;
   setHover: (k: NodeKey | null) => void;
   tileClick: (node: NodeKey) => void;
@@ -68,7 +73,7 @@ export interface GameState {
   createLine: (aTownId: string, bTownId: string) => void;
   buyTrain: (lineId: string) => void;
   deleteLine: (lineId: string) => void;
-  deliver: (fare: number) => void;
+  deliver: (fare: number, townId: string) => void;
   completeMission: (index: number) => void;
   dismissClear: () => void;
   commitTick: (dtGame: number) => void;
@@ -79,17 +84,78 @@ export interface GameState {
   reset: () => void;
 }
 
-function initialState() {
+const SAVE_KEY = 'rail-tycoon-3d-save-v2';
+
+interface SavedGame {
+  money: number;
+  bestMoney: number;
+  totalDelivered: number;
+  totalRevenue: number;
+  clock: number;
+  trackEdges: string[];
+  lines: Line[];
+  trainDefs: TrainDef[];
+  townProgress: Record<string, TownProgress>;
+  savingsGoalIndex: number;
+  missionIndex: number;
+  lineSeq: number;
+  trainSeq: number;
+}
+
+function emptyTownProgress(): Record<string, TownProgress> {
+  return Object.fromEntries(TOWNS.map((town) => [town.id, { delivered: 0, level: 1 }]));
+}
+
+function loadSavedGame(): SavedGame | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(SAVE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<SavedGame>;
+    if (
+      typeof parsed.money !== 'number' ||
+      !Array.isArray(parsed.trackEdges) ||
+      !Array.isArray(parsed.lines) ||
+      !Array.isArray(parsed.trainDefs)
+    ) {
+      return null;
+    }
+    return {
+      money: parsed.money,
+      bestMoney: parsed.bestMoney ?? parsed.money,
+      totalDelivered: parsed.totalDelivered ?? 0,
+      totalRevenue: parsed.totalRevenue ?? 0,
+      clock: parsed.clock ?? 0,
+      trackEdges: parsed.trackEdges,
+      lines: parsed.lines,
+      trainDefs: parsed.trainDefs,
+      townProgress: { ...emptyTownProgress(), ...(parsed.townProgress ?? {}) },
+      savingsGoalIndex: Math.min(parsed.savingsGoalIndex ?? 0, SAVINGS_GOALS.length),
+      missionIndex: Math.min(parsed.missionIndex ?? 0, MISSIONS.length),
+      lineSeq: parsed.lineSeq ?? parsed.lines.length,
+      trainSeq: parsed.trainSeq ?? parsed.trainDefs.length,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function makeInitialState(loadSave = true) {
+  const saved = loadSave ? loadSavedGame() : null;
   return {
     towns: TOWNS,
     terrain: generateTerrain(),
-    money: START_MONEY,
-    totalDelivered: 0,
-    totalRevenue: 0,
-    clock: 0,
-    trackEdges: new Set<string>(),
-    lines: [] as Line[],
-    trainDefs: [] as TrainDef[],
+    money: saved?.money ?? START_MONEY,
+    bestMoney: saved?.bestMoney ?? START_MONEY,
+    totalDelivered: saved?.totalDelivered ?? 0,
+    totalRevenue: saved?.totalRevenue ?? 0,
+    lastIncome: null as { amount: number; id: number } | null,
+    clock: saved?.clock ?? 0,
+    townProgress: saved?.townProgress ?? emptyTownProgress(),
+    savingsGoalIndex: saved?.savingsGoalIndex ?? 0,
+    trackEdges: new Set<string>(saved?.trackEdges ?? []),
+    lines: saved?.lines ?? ([] as Line[]),
+    trainDefs: saved?.trainDefs ?? ([] as TrainDef[]),
     buildMode: 'inspect' as BuildMode,
     anchorNode: null as NodeKey | null,
     hoverNode: null as NodeKey | null,
@@ -99,16 +165,29 @@ function initialState() {
     muted: isMuted(),
     toast: null as { msg: string; kind: ToastKind; id: number } | null,
     revision: 0,
-    missionIndex: 0,
+    missionIndex: saved?.missionIndex ?? 0,
     gameCleared: false,
-    lineSeq: 0,
-    trainSeq: 0,
+    lineSeq: saved?.lineSeq ?? 0,
+    trainSeq: saved?.trainSeq ?? 0,
     toastSeq: 0,
   };
 }
 
+function savingsAfter(balance: number, startIndex: number) {
+  let money = balance;
+  let index = startIndex;
+  const unlocked: (typeof SAVINGS_GOALS)[number][] = [];
+  while (index < SAVINGS_GOALS.length && money >= SAVINGS_GOALS[index].amount) {
+    const goal = SAVINGS_GOALS[index];
+    unlocked.push(goal);
+    money += goal.reward;
+    index++;
+  }
+  return { money, index, unlocked };
+}
+
 export const useGameStore = create<GameState>((set, get) => ({
-  ...initialState(),
+  ...makeInitialState(),
 
   setBuildMode: (m) => {
     play('click');
@@ -119,8 +198,10 @@ export const useGameStore = create<GameState>((set, get) => ({
   tileClick: (node) => {
     const { buildMode, anchorNode } = get();
     if (buildMode === 'track') {
-      if (!anchorNode) set({ anchorNode: node });
-      else {
+      if (!anchorNode) {
+        set({ anchorNode: node });
+        get().pushToast('ここから スタート！ つぎの ばしょを おしてね');
+      } else {
         get().buildTrackPath(anchorNode, node);
         set({ anchorNode: node });
       }
@@ -132,9 +213,12 @@ export const useGameStore = create<GameState>((set, get) => ({
   townClick: (id) => {
     const { buildMode, lineAnchorTown } = get();
     if (buildMode === 'line') {
-      if (!lineAnchorTown) set({ lineAnchorTown: id });
-      else if (lineAnchorTown === id) set({ lineAnchorTown: null });
-      else {
+      if (!lineAnchorTown) {
+        set({ lineAnchorTown: id });
+        get().pushToast('しゅっぱつする 町を えらんだよ。もう1つ 町を おしてね');
+      } else if (lineAnchorTown === id) {
+        set({ lineAnchorTown: null });
+      } else {
         get().createLine(lineAnchorTown, id);
         set({ lineAnchorTown: null });
       }
@@ -162,13 +246,14 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (newEdges.length === 0) return;
     if (money < cost) {
       play('error');
-      get().pushToast(`😢 お金が たりないよ！（${cost.toLocaleString()}円 いるよ）`, 'bad');
+      get().pushToast(`💸 お金が たりないよ（${cost.toLocaleString()}円 かかるよ）`, 'bad');
       return;
     }
     const next = new Set(trackEdges);
     for (const e of newEdges) next.add(e);
     play('build');
     set({ trackEdges: next, money: money - cost });
+    get().pushToast(`🛤️ せんろが ${newEdges.length}マス のびた！ −${cost.toLocaleString()}円`, 'good');
   },
 
   demolishNode: (node) => {
@@ -204,28 +289,43 @@ export const useGameStore = create<GameState>((set, get) => ({
       trainDefs: nextTrainDefs,
       selection: null,
     });
-    if (broken.length) get().pushToast('💥 せんろを こわしたので ろせんも なくなったよ');
+    get().pushToast(
+      broken.length
+        ? `🧹 せんろを かたづけたよ。ろせんも おしまい（+${refund.toLocaleString()}円）`
+        : `🧹 せんろを かたづけたよ（+${refund.toLocaleString()}円）`,
+    );
   },
 
   createLine: (aTownId, bTownId) => {
     const a = TOWNS_BY_ID.get(aTownId);
     const b = TOWNS_BY_ID.get(bTownId);
     if (!a || !b || a.id === b.id) return;
-    const { trackEdges, lines, lineSeq } = get();
+    const { trackEdges, lines, lineSeq, money } = get();
     const path = bfsPath(trackEdges, key(a.x, a.z), key(b.x, b.z));
     if (!path) {
       play('error');
-      get().pushToast('😮 その 2つの 町は まだ せんろで つながってないよ', 'bad');
+      get().pushToast('🛤️ その 2つの 町は、まだ せんろで つながっていないよ', 'bad');
+      return;
+    }
+    if (money < TRAIN_COST) {
+      play('error');
+      get().pushToast(`💸 電車には ${TRAIN_COST.toLocaleString()}円 ひつようだよ`, 'bad');
       return;
     }
     const stations = path.filter((n) => TOWN_BY_NODE.has(n)).map((n) => TOWN_BY_NODE.get(n)!.id);
     const seq = lineSeq + 1;
     const id = `ln${seq}`;
     const color = LINE_COLORS[(seq - 1) % LINE_COLORS.length];
-    const line: Line = { id, name: `ろせん${seq}`, color, pathNodes: path, stations };
+    const line: Line = {
+      id,
+      name: `${a.name}・${b.name}せん`,
+      color,
+      pathNodes: path,
+      stations,
+    };
     set({ lines: [...lines, line], lineSeq: seq, selection: { type: 'line', id } });
     get().buyTrain(id);
-    get().pushToast('🚆 電車が はしりはじめたよ！', 'good');
+    get().pushToast(`🚆 ${line.name}が しゅっぱつ！`, 'good');
   },
 
   buyTrain: (lineId) => {
@@ -234,7 +334,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (!line) return;
     if (money < TRAIN_COST) {
       play('error');
-      get().pushToast(`😢 お金が たりないよ！（電車は ${TRAIN_COST.toLocaleString()}円）`, 'bad');
+      get().pushToast(`💸 お金が たりないよ（電車は ${TRAIN_COST.toLocaleString()}円）`, 'bad');
       return;
     }
     const seq = trainSeq + 1;
@@ -259,21 +359,46 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
   },
 
-  deliver: (fare) => {
-    play('coin');
-    set((s) => ({
-      money: s.money + fare,
+  deliver: (fare, townId) => {
+    const s = get();
+    const previous = s.townProgress[townId] ?? { delivered: 0, level: 1 };
+    const delivered = previous.delivered + 1;
+    const level = townLevelFor(delivered);
+    const progress = {
+      ...s.townProgress,
+      [townId]: { delivered, level },
+    };
+    const savings = savingsAfter(s.money + fare, s.savingsGoalIndex);
+    const town = TOWNS_BY_ID.get(townId);
+    const leveledUp = level > previous.level;
+
+    play(leveledUp || savings.unlocked.length ? 'fanfare' : 'coin');
+    set({
+      money: savings.money,
+      bestMoney: Math.max(s.bestMoney, savings.money),
       totalDelivered: s.totalDelivered + 1,
       totalRevenue: s.totalRevenue + fare,
-    }));
+      lastIncome: { amount: fare, id: s.totalDelivered + 1 },
+      townProgress: progress,
+      savingsGoalIndex: savings.index,
+    });
+
+    if (savings.unlocked.length) {
+      const goal = savings.unlocked[savings.unlocked.length - 1];
+      get().pushToast(
+        `${goal.emoji} ちょきん たっせい！「${goal.name}」と +${goal.reward.toLocaleString()}円`,
+        'good',
+      );
+    } else if (leveledUp && town) {
+      get().pushToast(`🏙️ ${town.name}が レベル${level}に なった！`, 'good');
+    }
   },
 
   completeMission: (index) => {
     const s = get();
     if (s.missionIndex !== index || index >= MISSIONS.length) return;
-    const m = MISSIONS[index];
-    // 二重発火や誤発火を防ぐため、ストア側でも達成を検証する
-    const [cur, max] = m.progress({
+    const mission = MISSIONS[index];
+    const [cur, max] = mission.progress({
       money: s.money,
       totalDelivered: s.totalDelivered,
       trackEdges: s.trackEdges,
@@ -282,21 +407,28 @@ export const useGameStore = create<GameState>((set, get) => ({
       towns: s.towns,
     });
     if (cur < max) return;
+
+    const savings = savingsAfter(s.money + mission.reward, s.savingsGoalIndex);
     const isLast = index === MISSIONS.length - 1;
     play('fanfare');
-    set({ missionIndex: index + 1, money: s.money + m.reward, gameCleared: isLast || s.gameCleared });
+    set({
+      missionIndex: index + 1,
+      money: savings.money,
+      bestMoney: Math.max(s.bestMoney, savings.money),
+      savingsGoalIndex: savings.index,
+      gameCleared: isLast || s.gameCleared,
+    });
     if (!isLast) {
       get().pushToast(
-        m.reward > 0
-          ? `🎉 ミッションクリア！ ごほうび ${m.reward.toLocaleString()}円`
-          : '🎉 ミッションクリア！',
+        mission.reward > 0
+          ? `⭐ ミッションクリア！ +${mission.reward.toLocaleString()}円`
+          : '⭐ ミッションクリア！',
         'good',
       );
     }
   },
 
   dismissClear: () => set({ gameCleared: false }),
-
   commitTick: (dtGame) => set((s) => ({ clock: s.clock + dtGame, revision: s.revision + 1 })),
   setSpeed: (s) => {
     play('click');
@@ -315,10 +447,59 @@ export const useGameStore = create<GameState>((set, get) => ({
   clearToast: () => set({ toast: null }),
 
   reset: () => {
+    if (typeof window !== 'undefined') window.localStorage.removeItem(SAVE_KEY);
     sim.trains.clear();
-    for (const t of TOWNS) sim.waiting.set(t.id, []);
+    for (const town of TOWNS) sim.waiting.set(town.id, []);
     sim.spawnAcc = 0;
     sim.pseq = 0;
-    set({ ...initialState() });
+    set({ ...makeInitialState(false) });
   },
 }));
+
+// 保存した電車は、ページを開いた時に駅から再スタートする。
+const restored = useGameStore.getState();
+const restoredPerLine = new Map<string, number>();
+for (const train of restored.trainDefs) {
+  const line = restored.lines.find((candidate) => candidate.id === train.lineId);
+  if (!line || line.pathNodes.length < 2) continue;
+  const count = restoredPerLine.get(line.id) ?? 0;
+  addTrainRuntime(
+    sim,
+    train.id,
+    line.id,
+    line.pathNodes,
+    line.stations,
+    train.color,
+    count % 2 === 0,
+  );
+  restoredPerLine.set(line.id, count + 1);
+}
+
+let saveTimer: ReturnType<typeof setTimeout> | undefined;
+useGameStore.subscribe((state) => {
+  if (typeof window === 'undefined') return;
+  if (saveTimer) return;
+  saveTimer = setTimeout(() => {
+    const saved: SavedGame = {
+      money: state.money,
+      bestMoney: state.bestMoney,
+      totalDelivered: state.totalDelivered,
+      totalRevenue: state.totalRevenue,
+      clock: state.clock,
+      trackEdges: [...state.trackEdges],
+      lines: state.lines,
+      trainDefs: state.trainDefs,
+      townProgress: state.townProgress,
+      savingsGoalIndex: state.savingsGoalIndex,
+      missionIndex: state.missionIndex,
+      lineSeq: state.lineSeq,
+      trainSeq: state.trainSeq,
+    };
+    try {
+      window.localStorage.setItem(SAVE_KEY, JSON.stringify(saved));
+    } catch {
+      // プライベートモード等で保存できなくても、ゲームはそのまま続けられる。
+    }
+    saveTimer = undefined;
+  }, 500);
+});

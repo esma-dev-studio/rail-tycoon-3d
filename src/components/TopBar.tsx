@@ -1,10 +1,7 @@
-// ============================================================================
-// 上部バー — お金・日にち・はこんだ人数・スピード(小2向けのことばで表示)
-// ============================================================================
+import { useState } from 'react';
 import { SECONDS_PER_DAY, SPEEDS } from '../data/config';
+import { SAVINGS_GOALS } from '../data/progression';
 import { useGameStore } from '../store/gameStore';
-import { sim } from '../sim/simInstance';
-import { totalWaiting } from '../sim/simulation';
 
 const SPEED_LABELS: Record<number, { icon: string; title: string }> = {
   0: { icon: '⏸', title: 'とめる' },
@@ -13,7 +10,10 @@ const SPEED_LABELS: Record<number, { icon: string; title: string }> = {
 };
 
 export function TopBar() {
+  const [menuOpen, setMenuOpen] = useState(false);
   const money = useGameStore((s) => s.money);
+  const lastIncome = useGameStore((s) => s.lastIncome);
+  const savingsGoalIndex = useGameStore((s) => s.savingsGoalIndex);
   const clock = useGameStore((s) => s.clock);
   const totalDelivered = useGameStore((s) => s.totalDelivered);
   const speed = useGameStore((s) => s.speed);
@@ -21,68 +21,91 @@ export function TopBar() {
   const muted = useGameStore((s) => s.muted);
   const toggleMute = useGameStore((s) => s.toggleMute);
   const reset = useGameStore((s) => s.reset);
-  useGameStore((s) => s.revision); // ライブ更新
 
   const day = Math.floor(clock / SECONDS_PER_DAY) + 1;
-  const waiting = totalWaiting(sim);
+  const goal = SAVINGS_GOALS[savingsGoalIndex];
+  const savingsPct = goal ? Math.min(100, (money / goal.amount) * 100) : 100;
 
   const onReset = () => {
-    if (window.confirm('さいしょから やりなおす？')) reset();
+    if (window.confirm('いままでの きろくを けして、さいしょから あそぶ？')) {
+      reset();
+      setMenuOpen(false);
+    }
   };
 
   return (
-    <div className="topbar">
-      <div className="brand">
+    <header className="topbar">
+      <div className="brand" aria-label="でんしゃの町">
         <span className="brand__logo">🚆</span>
-        <span className="brand__name">でんしゃタイクーン3D</span>
+        <span className="brand__name">でんしゃの町</span>
       </div>
 
-      <div className="stats">
-        <div className="stat stat--money">
-          <span className="stat__label">💰 お金</span>
-          {/* key を金額にして、変わるたびにポップアニメを再生 */}
-          <span key={money} className={`stat__value stat__value--pop ${money < 0 ? 'is-neg' : ''}`}>
-            {money.toLocaleString()}円
-          </span>
+      <div className="money-card">
+        <div className="money-card__top">
+          <span>🐷 お金</span>
+          <strong key={money}>{money.toLocaleString()}円</strong>
+          {lastIncome && (
+            <span className="money-card__income" key={lastIncome.id}>
+              +{lastIncome.amount.toLocaleString()}円
+            </span>
+          )}
         </div>
-        <div className="stat">
-          <span className="stat__label">📅 ひにち</span>
-          <span className="stat__value">{day}日め</span>
-        </div>
-        <div className="stat">
-          <span className="stat__label">🙂 はこんだ人</span>
-          <span key={totalDelivered} className="stat__value stat__value--pop">
-            {totalDelivered.toLocaleString()}人
-          </span>
-        </div>
-        <div className="stat">
-          <span className="stat__label">🧍 まってる人</span>
-          <span className="stat__value">{waiting}人</span>
+        <div className="money-card__goal">
+          <div className="money-card__bar">
+            <span style={{ width: `${savingsPct}%` }} />
+          </div>
+          <small>{goal ? `つぎは ${goal.amount.toLocaleString()}円` : 'ちょきん ぜんぶ できた！'}</small>
         </div>
       </div>
 
-      <div className="speed">
-        {SPEEDS.map((s) => (
+      <div className="quick-stats">
+        <div className="quick-stat">
+          <span>🙂</span>
+          <b>{totalDelivered.toLocaleString()}人</b>
+          <small>はこんだ</small>
+        </div>
+        <div className="quick-stat">
+          <span>☀️</span>
+          <b>{day}日め</b>
+          <small>ひにち</small>
+        </div>
+      </div>
+
+      <div className="speed" aria-label="ゲームの はやさ">
+        {SPEEDS.map((value) => (
           <button
-            key={s}
-            className={`speed__btn ${speed === s ? 'is-active' : ''}`}
-            onClick={() => setSpeed(s)}
-            title={SPEED_LABELS[s].title}
+            key={value}
+            className={`speed__btn ${speed === value ? 'is-active' : ''}`}
+            onClick={() => setSpeed(value)}
+            title={SPEED_LABELS[value].title}
+            aria-label={SPEED_LABELS[value].title}
+            aria-pressed={speed === value}
           >
-            {SPEED_LABELS[s].icon}
+            {SPEED_LABELS[value].icon}
           </button>
         ))}
-        <button
-          className="speed__btn"
-          onClick={toggleMute}
-          title={muted ? 'おとを だす' : 'おとを けす'}
-        >
-          {muted ? '🔇' : '🔊'}
-        </button>
-        <button className="speed__btn speed__reset" onClick={onReset} title="さいしょから">
-          ↺
-        </button>
       </div>
-    </div>
+
+      <div className="settings">
+        <button
+          className="settings__toggle"
+          onClick={() => setMenuOpen((value) => !value)}
+          aria-expanded={menuOpen}
+          aria-label="せってい"
+        >
+          ⚙️
+        </button>
+        {menuOpen && (
+          <div className="settings__panel">
+            <b>せってい</b>
+            <button onClick={toggleMute}>{muted ? '🔇 おとを だす' : '🔊 おとを けす'}</button>
+            <span>💾 つづきは じどうで きろく中</span>
+            <button className="settings__reset" onClick={onReset}>
+              ↺ さいしょから
+            </button>
+          </div>
+        )}
+      </div>
+    </header>
   );
 }
