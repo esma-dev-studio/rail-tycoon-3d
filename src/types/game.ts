@@ -13,9 +13,9 @@ export type NodeKey = string;
 export interface Town {
   id: string;
   name: string;
-  x: number; // grid coord
-  z: number; // grid coord
-  size: number; // 1〜3。乗客発生と建物の規模に影響
+  x: number;
+  z: number;
+  size: number;
   color: string;
 }
 
@@ -24,13 +24,11 @@ export interface Line {
   id: string;
   name: string;
   color: string;
-  /** 端から端までのノード経路 */
   pathNodes: NodeKey[];
-  /** 経路上にある町(駅)のID(順序) */
   stations: string[];
 }
 
-/** 列車の静的定義(UI識別用。動的な位置は sim 側) */
+/** 列車の静的定義。動的な位置は sim 側に持つ。 */
 export interface TrainDef {
   id: string;
   lineId: string;
@@ -43,7 +41,8 @@ export interface Passenger {
   toTownId: string;
 }
 
-export type BuildMode = 'inspect' | 'track' | 'line' | 'demolish';
+/** route は町を2つ選ぶだけの標準モード。track/line は上級者向け。 */
+export type BuildMode = 'inspect' | 'route' | 'track' | 'line' | 'demolish';
 
 export type Selection =
   | { type: 'town'; id: string }
@@ -51,5 +50,4 @@ export type Selection =
   | { type: 'line'; id: string }
   | null;
 
-/** 3〜要素の座標 */
 export type Vec3 = [number, number, number];

@@ -133,6 +133,8 @@ function TownItem({ town }: { town: Town }) {
   const townClick = useGameStore((s) => s.townClick);
   const selection = useGameStore((s) => s.selection);
   const lineAnchorTown = useGameStore((s) => s.lineAnchorTown);
+  const routeStartTown = useGameStore((s) => s.routeStartTown);
+  const routeEndTown = useGameStore((s) => s.routeEndTown);
   const progress = useGameStore((s) => s.townProgress[town.id] ?? { delivered: 0, level: 1 });
   useGameStore((s) => s.revision);
 
@@ -140,7 +142,9 @@ function TownItem({ town }: { town: Town }) {
   const buildings = buildingsFor(town, progress.level);
   const selected = selection?.type === 'town' && selection.id === town.id;
   const isAnchor = lineAnchorTown === town.id;
-  const highlight = selected || isAnchor;
+  const isRouteStart = routeStartTown === town.id;
+  const isRouteEnd = routeEndTown === town.id;
+  const highlight = selected || isAnchor || isRouteStart || isRouteEnd;
   const waiting = townWaiting(sim, town.id);
 
   const onClick = (event: ThreeEvent<MouseEvent>) => {
@@ -204,8 +208,14 @@ function TownItem({ town }: { town: Town }) {
         zIndexRange={[12, 0]}
         wrapperClass="html-pass-through"
       >
-        <div className={`town-label${highlight ? ' is-active' : ''}`}>
+        <div
+          className={`town-label${highlight ? ' is-active' : ''}${
+            isRouteStart ? ' is-route-start' : isRouteEnd ? ' is-route-end' : ''
+          }`}
+        >
           <span className="town-label__name">{town.name}</span>
+          {isRouteStart && <span className="town-label__route">スタート</span>}
+          {isRouteEnd && <span className="town-label__route">ゴール</span>}
           <span className="town-label__level">⭐ Lv.{progress.level}</span>
           {waiting > 0 && <span className="town-label__wait">🧍 {waiting}人</span>}
         </div>

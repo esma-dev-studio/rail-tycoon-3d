@@ -1,135 +1,245 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { TRACK_COST, BRIDGE_COST, TRAIN_COST } from '../data/config';
-import { edgeKey, manhattanPath } from '../utils/grid';
+import { TOWNS_BY_ID } from '../data/world';
+import { edgeKey, key, manhattanPath } from '../utils/grid';
 import { isBridgeEdge, trackEdgeCost } from '../sim/economy';
 import { useGameStore } from '../store/gameStore';
-import type { BuildMode } from '../types/game';
+import { RailIcon } from './RailIcon';
 
-const MAIN_MODES: { mode: BuildMode; icon: string; label: string; aria: string }[] = [
-  { mode: 'inspect', icon: '👆', label: '見る', aria: '町や電車を見る' },
-  { mode: 'track', icon: '🛤️', label: 'せんろ', aria: 'せんろをつくる' },
-  { mode: 'line', icon: '🚆', label: '電車', aria: '電車をはしらせる' },
-];
+function useCoach() {
+  const buildMode = useGameStore((state) => state.buildMode);
+  const routeStartTown = useGameStore((state) => state.routeStartTown);
+  const routeEndTown = useGameStore((state) => state.routeEndTown);
+  const lines = useGameStore((state) => state.lines);
+  const totalDelivered = useGameStore((state) => state.totalDelivered);
 
-function Coach() {
-  const buildMode = useGameStore((s) => s.buildMode);
-  const anchorNode = useGameStore((s) => s.anchorNode);
-  const lineAnchorTown = useGameStore((s) => s.lineAnchorTown);
-  const trackEdges = useGameStore((s) => s.trackEdges);
-  const lines = useGameStore((s) => s.lines);
-  const totalDelivered = useGameStore((s) => s.totalDelivered);
-
-  if (trackEdges.size === 0) {
-    if (buildMode !== 'track') {
-      return { step: '1', icon: '👇', text: '下の「せんろ」を おそう' };
-    }
-    if (!anchorNode) return { step: '1', icon: '🏘️', text: '1つめの 町を おそう' };
-    return { step: '2', icon: '🏘️', text: 'つなぎたい もう1つの 町を おそう' };
+  if (buildMode === 'route') {
+    if (!routeStartTown) return { step: 1, text: 'しゅっぱつする 町を おそう' };
+    if (!routeEndTown) return { step: 2, text: 'つなぎたい 町を もう1つ おそう' };
+    return { step: 3, text: 'ねだんを見て「このせんを つくる！」' };
   }
-  if (lines.length === 0) {
-    if (buildMode !== 'line') {
-      return { step: '3', icon: '👇', text: '下の「電車」を おそう' };
-    }
-    if (!lineAnchorTown) return { step: '3', icon: '🚉', text: 'しゅっぱつする 町を おそう' };
-    return { step: '4', icon: '🏁', text: 'とうちゃくする 町を おそう' };
-  }
-  if (totalDelivered === 0) {
-    return { step: '5', icon: '👀', text: '電車が おきゃくさんを はこぶのを 見てみよう！' };
-  }
-  if (totalDelivered < 4) {
-    return { step: '6', icon: '🏙️', text: `あと ${4 - totalDelivered}人 はこぶと、町が そだつよ！` };
-  }
-  return { step: '★', icon: '💡', text: 'せんろを のばす？ お金を ためる？ きみの さくせんで あそぼう！' };
+  if (lines.length === 0) return { step: 1, text: '「新しいせんろ」から はじめよう' };
+  if (totalDelivered === 0) return { step: 4, text: '電車が 人を はこぶところを 見てみよう' };
+  if (totalDelivered < 4) return { step: 5, text: `あと ${4 - totalDelivered}人で 町が レベルアップ！` };
+  return { step: 6, text: 'つぎは どの町へ せんろを のばす？' };
 }
 
 export function BuildToolbar() {
-  const buildMode = useGameStore((s) => s.buildMode);
-  const setBuildMode = useGameStore((s) => s.setBuildMode);
-  const anchorNode = useGameStore((s) => s.anchorNode);
-  const hoverNode = useGameStore((s) => s.hoverNode);
-  const trackEdges = useGameStore((s) => s.trackEdges);
-  const lines = useGameStore((s) => s.lines);
-  const terrain = useGameStore((s) => s.terrain);
-  const money = useGameStore((s) => s.money);
-  const coach = Coach();
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const buildMode = useGameStore((state) => state.buildMode);
+  const setBuildMode = useGameStore((state) => state.setBuildMode);
+  const anchorNode = useGameStore((state) => state.anchorNode);
+  const hoverNode = useGameStore((state) => state.hoverNode);
+  const routeStartTown = useGameStore((state) => state.routeStartTown);
+  const routeEndTown = useGameStore((state) => state.routeEndTown);
+  const trackEdges = useGameStore((state) => state.trackEdges);
+  const terrain = useGameStore((state) => state.terrain);
+  const money = useGameStore((state) => state.money);
+  const lines = useGameStore((state) => state.lines);
+  const confirmEasyRoute = useGameStore((state) => state.confirmEasyRoute);
+  const cancelEasyRoute = useGameStore((state) => state.cancelEasyRoute);
+  const coach = useCoach();
 
-  const quote = useMemo(() => {
+  const routePlan = useMemo(() => {
+    const start = routeStartTown ? TOWNS_BY_ID.get(routeStartTown) : null;
+    const end = routeEndTown ? TOWNS_BY_ID.get(routeEndTown) : null;
+    if (!start || !end) return null;
+    const path = manhattanPath(key(start.x, start.z), key(end.x, end.z));
+    let newTiles = 0;
+    let bridges = 0;
+    let trackPrice = 0;
+    for (let index = 0; index < path.length - 1; index++) {
+      const edge = edgeKey(path[index], path[index + 1]);
+      if (trackEdges.has(edge)) continue;
+      newTiles++;
+      trackPrice += trackEdgeCost(path[index], path[index + 1], terrain);
+      if (isBridgeEdge(path[index], path[index + 1], terrain)) bridges++;
+    }
+    const total = trackPrice + TRAIN_COST;
+    return {
+      start,
+      end,
+      newTiles,
+      bridges,
+      trackPrice,
+      total,
+      after: money - total,
+      affordable: money >= total,
+    };
+  }, [routeStartTown, routeEndTown, trackEdges, terrain, money]);
+
+  const manualQuote = useMemo(() => {
     if (buildMode !== 'track' || !anchorNode || !hoverNode || anchorNode === hoverNode) return null;
     const path = manhattanPath(anchorNode, hoverNode);
     let tiles = 0;
     let bridges = 0;
     let cost = 0;
-    for (let i = 0; i < path.length - 1; i++) {
-      if (trackEdges.has(edgeKey(path[i], path[i + 1]))) continue;
+    for (let index = 0; index < path.length - 1; index++) {
+      if (trackEdges.has(edgeKey(path[index], path[index + 1]))) continue;
       tiles++;
-      cost += trackEdgeCost(path[i], path[i + 1], terrain);
-      if (isBridgeEdge(path[i], path[i + 1], terrain)) bridges++;
+      cost += trackEdgeCost(path[index], path[index + 1], terrain);
+      if (isBridgeEdge(path[index], path[index + 1], terrain)) bridges++;
     }
     if (tiles === 0) return null;
-    return { tiles, bridges, cost, ok: money >= cost, left: money - cost };
+    return { tiles, bridges, cost, affordable: money >= cost };
   }, [buildMode, anchorNode, hoverNode, trackEdges, terrain, money]);
 
-  const suggestedMode: BuildMode | null =
-    trackEdges.size === 0 ? 'track' : lines.length === 0 ? 'line' : null;
+  const chooseRouteMode = () => {
+    setAdvancedOpen(false);
+    setBuildMode('route');
+  };
 
   return (
-    <div className="toolbar">
-      <div className="coach" aria-live="polite">
-        <span className="coach__step">{coach.step}</span>
-        <span className="coach__icon">{coach.icon}</span>
-        <b>{coach.text}</b>
+    <div className="control-dock">
+      <div className="control-guide" aria-live="polite">
+        <span className="control-guide__step">{coach.step}</span>
+        <span>
+          <small>NEXT ACTION</small>
+          <b>{coach.text}</b>
+        </span>
       </div>
 
-      {quote && (
-        <div className={`quote ${quote.ok ? '' : 'is-over'}`}>
-          <span>🛤️ {quote.tiles}マス</span>
-          {quote.bridges > 0 && <span> 🌉 はし {quote.bridges}マス</span>}
-          <strong>{quote.cost.toLocaleString()}円</strong>
-          <small>
-            {quote.ok
-              ? `のこり ${quote.left.toLocaleString()}円`
-              : `あと ${(-quote.left).toLocaleString()}円 たりない`}
-          </small>
+      {buildMode === 'route' && (
+        <div className="route-builder">
+          <div className="route-builder__steps" aria-label="せんろをつくる 3ステップ">
+            <span className={routeStartTown ? 'is-done' : 'is-current'}>
+              <i>1</i> 町をえらぶ
+            </span>
+            <em />
+            <span className={routeEndTown ? 'is-done' : routeStartTown ? 'is-current' : ''}>
+              <i>2</i> もう1つ
+            </span>
+            <em />
+            <span className={routePlan ? 'is-current' : ''}>
+              <i>3</i> つくる
+            </span>
+          </div>
+
+          {routePlan && (
+            <div className="route-ticket">
+              <div className="route-ticket__line">
+                <span className="route-ticket__station">{routePlan.start.name}</span>
+                <span className="route-ticket__rail">
+                  <i />
+                  <RailIcon name="train" />
+                  <i />
+                </span>
+                <span className="route-ticket__station">{routePlan.end.name}</span>
+              </div>
+              <div className="route-ticket__facts">
+                <span>
+                  <small>せんろ</small>
+                  <b>{routePlan.newTiles}マス</b>
+                </span>
+                {routePlan.bridges > 0 && (
+                  <span>
+                    <small>はし</small>
+                    <b>{routePlan.bridges}マス</b>
+                  </span>
+                )}
+                <span>
+                  <small>せんろ代</small>
+                  <b>{routePlan.trackPrice.toLocaleString()}円</b>
+                </span>
+                <span>
+                  <small>電車つき</small>
+                  <b>{TRAIN_COST.toLocaleString()}円</b>
+                </span>
+                <span className="route-ticket__total">
+                  <small>ぜんぶで</small>
+                  <strong>{routePlan.total.toLocaleString()}円</strong>
+                </span>
+              </div>
+              <div className={`route-ticket__balance ${routePlan.affordable ? '' : 'is-short'}`}>
+                {routePlan.affordable
+                  ? `つくった あとは ${routePlan.after.toLocaleString()}円`
+                  : `あと ${(-routePlan.after).toLocaleString()}円 たりない`}
+              </div>
+              <div className="route-ticket__actions">
+                <button className="route-ticket__cancel" onClick={cancelEasyRoute}>
+                  えらびなおす
+                </button>
+                <button
+                  className="route-ticket__confirm"
+                  onClick={confirmEasyRoute}
+                  disabled={!routePlan.affordable}
+                >
+                  <RailIcon name="sparkle" />
+                  このせんを つくる！
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      <div className="toolbar__main">
-        <div className="toolbar__modes" role="group" aria-label="つくる どうぐ">
-          {MAIN_MODES.map((item) => (
-            <button
-              key={item.mode}
-              className={`mode ${buildMode === item.mode ? 'is-active' : ''} ${
-                suggestedMode === item.mode && buildMode !== item.mode ? 'is-next' : ''
-              }`}
-              onClick={() => setBuildMode(item.mode)}
-              aria-label={item.aria}
-              aria-pressed={buildMode === item.mode}
-            >
-              {suggestedMode === item.mode && buildMode !== item.mode && (
-                <span className="mode__next">つぎ</span>
-              )}
-              <span className="mode__icon">{item.icon}</span>
-              <span className="mode__label">{item.label}</span>
-            </button>
-          ))}
+      {manualQuote && (
+        <div className={`manual-quote ${manualQuote.affordable ? '' : 'is-short'}`}>
+          {manualQuote.tiles}マス・{manualQuote.cost.toLocaleString()}円
+          {manualQuote.bridges > 0 && `（はし ${manualQuote.bridges}マス）`}
         </div>
+      )}
+
+      <div className="control-dock__bar">
         <button
-          className={`tidy-btn ${buildMode === 'demolish' ? 'is-active' : ''}`}
-          onClick={() => setBuildMode(buildMode === 'demolish' ? 'inspect' : 'demolish')}
-          aria-label="せんろを かたづける"
-          aria-pressed={buildMode === 'demolish'}
+          className={`dock-action ${buildMode === 'inspect' ? 'is-active' : ''}`}
+          onClick={() => {
+            setAdvancedOpen(false);
+            setBuildMode('inspect');
+          }}
+          aria-pressed={buildMode === 'inspect'}
         >
-          🧹<span>{buildMode === 'demolish' ? 'けす ばしょを おす' : 'かたづけ'}</span>
+          <RailIcon name="eye" />
+          <span>町を見る</span>
+        </button>
+
+        <button
+          className={`dock-action dock-action--primary ${buildMode === 'route' ? 'is-active' : ''} ${
+            lines.length === 0 && buildMode !== 'route' ? 'is-recommended' : ''
+          }`}
+          onClick={chooseRouteMode}
+          aria-pressed={buildMode === 'route'}
+        >
+          {lines.length === 0 && buildMode !== 'route' && <small>ここから！</small>}
+          <RailIcon name="route" />
+          <span>新しいせんろ</span>
+        </button>
+
+        <button
+          className={`dock-action ${advancedOpen ? 'is-active' : ''}`}
+          onClick={() => setAdvancedOpen((open) => !open)}
+          aria-expanded={advancedOpen}
+        >
+          <RailIcon name="tools" />
+          <span>じゆう</span>
         </button>
       </div>
 
-      {buildMode === 'track' && !anchorNode && (
-        <div className="cost-note">
-          1マス {TRACK_COST}円 ・ 川の はし {BRIDGE_COST}円
+      {advancedOpen && (
+        <div className="advanced-tools">
+          <span className="advanced-tools__label">くわしく つくる</span>
+          <button
+            className={buildMode === 'track' ? 'is-active' : ''}
+            onClick={() => setBuildMode('track')}
+          >
+            <RailIcon name="route" /> せんろを 1マスずつ
+          </button>
+          <button
+            className={buildMode === 'line' ? 'is-active' : ''}
+            onClick={() => setBuildMode('line')}
+          >
+            <RailIcon name="train" /> ろせんを きめる
+          </button>
+          <button
+            className={`advanced-tools__danger ${buildMode === 'demolish' ? 'is-active' : ''}`}
+            onClick={() => setBuildMode('demolish')}
+          >
+            <RailIcon name="broom" /> せんろを けす
+          </button>
+          <small>
+            せんろ 1マス {TRACK_COST}円 ／ 川の はし {BRIDGE_COST}円
+          </small>
         </div>
-      )}
-      {buildMode === 'line' && (
-        <div className="cost-note">電車 1だい {TRAIN_COST.toLocaleString()}円</div>
       )}
     </div>
   );

@@ -1,9 +1,3 @@
-// ============================================================================
-// ミッション(ゴール) — 小2向けの段階的な目標。順番にクリアしていく。
-// progress はストアの状態だけから計算できる純関数(Nodeでも検証可能)。
-// ============================================================================
-import { key } from '../utils/grid';
-import { bfsPath } from '../sim/pathfinding';
 import type { Line, Town, TrainDef } from '../types/game';
 
 export interface MissionSnapshot {
@@ -17,75 +11,64 @@ export interface MissionSnapshot {
 
 export interface Mission {
   emoji: string;
-  title: string; // 小2向けのことば
-  hint: string; // やりかたのヒント
-  reward: number; // クリアごほうび(円)
-  /** [いまの値, 目標値] */
-  progress: (s: MissionSnapshot) => [number, number];
-  /** 進捗の表示形式 */
+  title: string;
+  hint: string;
+  reward: number;
+  progress: (snapshot: MissionSnapshot) => [number, number];
   unit: 'check' | 'count' | 'yen';
 }
 
-/** どこか2つの町が線路でつながっているか */
-function anyTownsConnected(s: MissionSnapshot): boolean {
-  if (s.trackEdges.size === 0) return false;
-  for (let i = 0; i < s.towns.length; i++) {
-    for (let j = i + 1; j < s.towns.length; j++) {
-      const a = s.towns[i];
-      const b = s.towns[j];
-      if (bfsPath(s.trackEdges, key(a.x, a.z), key(b.x, b.z))) return true;
-    }
-  }
-  return false;
+function servedTownCount(snapshot: MissionSnapshot): number {
+  return new Set(snapshot.lines.flatMap((line) => line.stations)).size;
 }
 
 export const MISSIONS: Mission[] = [
   {
-    emoji: '🛤',
-    title: 'せんろで 町と 町を つなごう',
-    hint: '下の「せんろ」を おして、町から 町まで じめんを クリック！',
-    reward: 2000,
+    emoji: '01',
+    title: 'はじめての せんを つくろう',
+    hint: '「新しいせんろ」を おして、町を 2つ えらぼう',
+    reward: 4000,
     unit: 'check',
-    progress: (s) => [anyTownsConnected(s) ? 1 : 0, 1],
+    progress: (snapshot) => [Math.min(snapshot.lines.length, 1), 1],
   },
   {
-    emoji: '🚆',
-    title: '電車を はしらせよう',
-    hint: '下の「電車」を おして、つないだ 町を 2つ クリック！',
-    reward: 3000,
-    unit: 'check',
-    progress: (s) => [Math.min(s.lines.length, 1), 1],
-  },
-  {
-    emoji: '🙂',
-    title: 'お客さんを 10人 はこぼう',
-    hint: '電車が じどうで お客さんを はこぶよ。まってみよう！',
-    reward: 3000,
+    emoji: '02',
+    title: 'おきゃくさんを 5人 はこぼう',
+    hint: '電車は じどうで はしるよ。町に とうちゃくするのを 見てみよう',
+    reward: 2500,
     unit: 'count',
-    progress: (s) => [Math.min(s.totalDelivered, 10), 10],
+    progress: (snapshot) => [Math.min(snapshot.totalDelivered, 5), 5],
   },
   {
-    emoji: '🚃',
-    title: '電車を 3だいに ふやそう',
-    hint: 'ろせんを クリックして「電車を ふやす」を おそう',
-    reward: 5000,
+    emoji: '03',
+    title: '電車を 2だいに しよう',
+    hint: '走っている せんを おして「電車を ふやす」を おそう',
+    reward: 3500,
     unit: 'count',
-    progress: (s) => [Math.min(s.trainDefs.length, 3), 3],
+    progress: (snapshot) => [Math.min(snapshot.trainDefs.length, 2), 2],
   },
   {
-    emoji: '💰',
+    emoji: '04',
+    title: '3つの 町へ ひろげよう',
+    hint: '「新しいせんろ」で、まだ つないでいない 町を えらぼう',
+    reward: 4000,
+    unit: 'count',
+    progress: (snapshot) => [Math.min(servedTownCount(snapshot), 3), 3],
+  },
+  {
+    emoji: '05',
     title: 'お金を 20,000円 ためよう',
-    hint: 'せんろを のばして、いろんな 町に 電車を はしらせよう',
-    reward: 8000,
+    hint: 'つぎの せんろを つくるか、ちょきんするか、さくせんを きめよう',
+    reward: 6000,
     unit: 'yen',
-    progress: (s) => [Math.min(s.money, 20000), 20000],
+    progress: (snapshot) => [Math.min(snapshot.money, 20_000), 20_000],
   },
   {
-    emoji: '🏆',
-    title: 'お客さんを 100人 はこぼう',
-    hint: 'ぜんぶの 町を つないで、たくさん はこぼう！',
+    emoji: '06',
+    title: 'おきゃくさんを 100人 はこぼう',
+    hint: 'ぜんぶの 町を つないで、でんしゃマスターを めざそう！',
     reward: 0,
     unit: 'count',
-    progress: (s) => [Math.min(s.totalDelivered, 100), 100],
+    progress: (snapshot) => [Math.min(snapshot.totalDelivered, 100), 100],
   },
 ];

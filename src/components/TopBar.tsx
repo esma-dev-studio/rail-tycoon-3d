@@ -2,25 +2,26 @@ import { useState } from 'react';
 import { SECONDS_PER_DAY, SPEEDS } from '../data/config';
 import { SAVINGS_GOALS } from '../data/progression';
 import { useGameStore } from '../store/gameStore';
+import { RailIcon, type RailIconName } from './RailIcon';
 
-const SPEED_LABELS: Record<number, { icon: string; title: string }> = {
-  0: { icon: '⏸', title: 'とめる' },
-  1: { icon: '▶', title: 'ふつう' },
-  3: { icon: '⏩', title: 'はやい' },
+const SPEED_LABELS: Record<number, { icon: RailIconName; title: string }> = {
+  0: { icon: 'pause', title: 'とめる' },
+  1: { icon: 'play', title: 'ふつう' },
+  3: { icon: 'fast', title: 'はやい' },
 };
 
 export function TopBar() {
   const [menuOpen, setMenuOpen] = useState(false);
-  const money = useGameStore((s) => s.money);
-  const lastIncome = useGameStore((s) => s.lastIncome);
-  const savingsGoalIndex = useGameStore((s) => s.savingsGoalIndex);
-  const clock = useGameStore((s) => s.clock);
-  const totalDelivered = useGameStore((s) => s.totalDelivered);
-  const speed = useGameStore((s) => s.speed);
-  const setSpeed = useGameStore((s) => s.setSpeed);
-  const muted = useGameStore((s) => s.muted);
-  const toggleMute = useGameStore((s) => s.toggleMute);
-  const reset = useGameStore((s) => s.reset);
+  const money = useGameStore((state) => state.money);
+  const lastIncome = useGameStore((state) => state.lastIncome);
+  const savingsGoalIndex = useGameStore((state) => state.savingsGoalIndex);
+  const clock = useGameStore((state) => state.clock);
+  const totalDelivered = useGameStore((state) => state.totalDelivered);
+  const speed = useGameStore((state) => state.speed);
+  const setSpeed = useGameStore((state) => state.setSpeed);
+  const muted = useGameStore((state) => state.muted);
+  const toggleMute = useGameStore((state) => state.toggleMute);
+  const reset = useGameStore((state) => state.reset);
 
   const day = Math.floor(clock / SECONDS_PER_DAY) + 1;
   const goal = SAVINGS_GOALS[savingsGoalIndex];
@@ -34,15 +35,22 @@ export function TopBar() {
   };
 
   return (
-    <header className="topbar">
+    <header className="topbar topbar--control">
       <div className="brand" aria-label="でんしゃの町">
-        <span className="brand__logo">🚆</span>
-        <span className="brand__name">でんしゃの町</span>
+        <span className="brand__logo">
+          <RailIcon name="train" />
+        </span>
+        <span className="brand__copy">
+          <strong>でんしゃの町</strong>
+          <small>RAIL CITY</small>
+        </span>
       </div>
 
       <div className="money-card">
         <div className="money-card__top">
-          <span>🐷 お金</span>
+          <span className="money-card__label">
+            <RailIcon name="coin" /> お金
+          </span>
           <strong key={money}>{money.toLocaleString()}円</strong>
           {lastIncome && (
             <span className="money-card__income" key={lastIncome.id}>
@@ -54,18 +62,18 @@ export function TopBar() {
           <div className="money-card__bar">
             <span style={{ width: `${savingsPct}%` }} />
           </div>
-          <small>{goal ? `つぎは ${goal.amount.toLocaleString()}円` : 'ちょきん ぜんぶ できた！'}</small>
+          <small>{goal ? `つぎ ${goal.amount.toLocaleString()}円` : 'ぜんぶ できた！'}</small>
         </div>
       </div>
 
       <div className="quick-stats">
         <div className="quick-stat">
-          <span>🙂</span>
+          <RailIcon name="people" />
           <b>{totalDelivered.toLocaleString()}人</b>
           <small>はこんだ</small>
         </div>
         <div className="quick-stat">
-          <span>☀️</span>
+          <RailIcon name="sun" />
           <b>{day}日め</b>
           <small>ひにち</small>
         </div>
@@ -81,7 +89,7 @@ export function TopBar() {
             aria-label={SPEED_LABELS[value].title}
             aria-pressed={speed === value}
           >
-            {SPEED_LABELS[value].icon}
+            <RailIcon name={SPEED_LABELS[value].icon} />
           </button>
         ))}
       </div>
@@ -93,15 +101,15 @@ export function TopBar() {
           aria-expanded={menuOpen}
           aria-label="せってい"
         >
-          ⚙️
+          <RailIcon name="settings" />
         </button>
         {menuOpen && (
           <div className="settings__panel">
             <b>せってい</b>
-            <button onClick={toggleMute}>{muted ? '🔇 おとを だす' : '🔊 おとを けす'}</button>
-            <span>💾 つづきは じどうで きろく中</span>
+            <button onClick={toggleMute}>{muted ? 'おとを だす' : 'おとを けす'}</button>
+            <span>つづきは じどうで きろく中</span>
             <button className="settings__reset" onClick={onReset}>
-              ↺ さいしょから
+              さいしょから
             </button>
           </div>
         )}

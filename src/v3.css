@@ -1,0 +1,1222 @@
+/* ==========================================================================
+   RAIL CITY v3 — 未来の鉄道司令室
+   HTML/SVGの読みやすさと、3Dジオラマの楽しさを分担させる。
+   ========================================================================== */
+:root {
+  --rail-navy: #0c2232;
+  --rail-navy-2: #123348;
+  --rail-panel: rgba(10, 31, 45, 0.94);
+  --rail-panel-soft: rgba(18, 50, 69, 0.94);
+  --rail-cyan: #27e0c1;
+  --rail-cyan-soft: #bffbef;
+  --rail-orange: #ffad2f;
+  --rail-orange-dark: #d8770b;
+  --rail-white: #f5fbff;
+  --rail-muted: #9db9c9;
+  --rail-border: rgba(125, 222, 221, 0.25);
+  --rail-shadow: 0 13px 34px rgba(4, 20, 31, 0.34);
+}
+
+.rail-icon {
+  width: 1em;
+  height: 1em;
+  display: block;
+}
+
+.app::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 8;
+  box-shadow: inset 0 0 90px rgba(8, 38, 57, 0.12);
+}
+
+/* --- 上部：駅の案内表示のような司令室HUD ------------------------------- */
+.topbar--control {
+  grid-template-columns: auto minmax(290px, 360px) auto auto auto;
+}
+
+.topbar--control .brand {
+  height: 58px;
+  padding: 0 17px;
+  color: var(--rail-white);
+  background: linear-gradient(145deg, var(--rail-navy-2), var(--rail-navy));
+  border: 1px solid var(--rail-border);
+  border-bottom: 5px solid #061824;
+  box-shadow: var(--rail-shadow);
+}
+
+.topbar--control .brand__logo {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  color: var(--rail-cyan);
+  background: rgba(39, 224, 193, 0.11);
+  border: 1px solid rgba(39, 224, 193, 0.34);
+  border-radius: 12px;
+}
+
+.topbar--control .brand__logo .rail-icon {
+  width: 25px;
+  height: 25px;
+}
+
+.brand__copy {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.05;
+}
+
+.brand__copy strong {
+  font-size: 15px;
+  letter-spacing: 0.04em;
+}
+
+.brand__copy small {
+  margin-top: 4px;
+  color: var(--rail-cyan);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+}
+
+.topbar--control .money-card {
+  height: 64px;
+  color: var(--rail-white);
+  background:
+    linear-gradient(90deg, rgba(255, 173, 47, 0.13), transparent 54%),
+    linear-gradient(145deg, #173c50, #0c2638);
+  border: 1px solid rgba(255, 188, 83, 0.55);
+  border-bottom: 5px solid #071c2a;
+  box-shadow: var(--rail-shadow);
+}
+
+.topbar--control .money-card__top {
+  color: #ffd486;
+}
+
+.money-card__label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.money-card__label .rail-icon {
+  width: 15px;
+  height: 15px;
+}
+
+.topbar--control .money-card__top strong {
+  color: #fff3c7;
+  text-shadow: 0 0 16px rgba(255, 183, 59, 0.34);
+}
+
+.topbar--control .money-card__goal small {
+  color: #ddc58d;
+}
+
+.topbar--control .money-card__bar {
+  background: rgba(255, 255, 255, 0.13);
+}
+
+.topbar--control .money-card__bar span {
+  background: linear-gradient(90deg, var(--rail-orange), #ffe56f);
+  box-shadow: 0 0 9px rgba(255, 183, 59, 0.8);
+}
+
+.topbar--control .money-card__income {
+  color: #08261e;
+  background: var(--rail-cyan);
+}
+
+.topbar--control .quick-stat {
+  height: 54px;
+  color: var(--rail-white);
+  background: var(--rail-panel);
+  border: 1px solid var(--rail-border);
+  border-bottom: 4px solid #061824;
+  box-shadow: var(--rail-shadow);
+}
+
+.topbar--control .quick-stat > .rail-icon {
+  grid-row: 1 / 3;
+  align-self: center;
+  width: 22px;
+  height: 22px;
+  color: var(--rail-cyan);
+}
+
+.topbar--control .quick-stat small {
+  color: var(--rail-muted);
+}
+
+.topbar--control .speed {
+  background: var(--rail-panel);
+  border: 1px solid var(--rail-border);
+  box-shadow: var(--rail-shadow);
+}
+
+.topbar--control .speed__btn {
+  color: var(--rail-muted);
+  background: transparent;
+  border-bottom-color: transparent;
+}
+
+.topbar--control .speed__btn .rail-icon {
+  width: 18px;
+  height: 18px;
+  margin: auto;
+}
+
+.topbar--control .speed__btn.is-active {
+  color: #07382e;
+  background: var(--rail-cyan);
+  border-color: var(--rail-cyan);
+  border-bottom-color: #07957d;
+  box-shadow: 0 0 16px rgba(39, 224, 193, 0.38);
+}
+
+.topbar--control .settings__toggle {
+  color: var(--rail-cyan);
+  background: var(--rail-panel);
+  border: 1px solid var(--rail-border);
+  border-bottom: 4px solid #061824;
+  box-shadow: var(--rail-shadow);
+}
+
+.topbar--control .settings__toggle .rail-icon {
+  width: 21px;
+  height: 21px;
+  margin: auto;
+}
+
+.topbar--control .settings__panel {
+  color: var(--rail-white);
+  background: var(--rail-panel);
+  border-color: var(--rail-border);
+}
+
+.topbar--control .settings__panel button {
+  color: var(--rail-white);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.topbar--control .settings__panel > span {
+  color: var(--rail-muted);
+}
+
+/* --- ミッション：駅の発車標 ------------------------------------------- */
+.mission {
+  top: 86px;
+  color: var(--rail-white);
+  background:
+    linear-gradient(90deg, rgba(39, 224, 193, 0.08), transparent 60%),
+    var(--rail-panel);
+  border: 1px solid var(--rail-border);
+  border-left: 6px solid var(--rail-cyan);
+  border-bottom: 5px solid #061824;
+  box-shadow: var(--rail-shadow);
+}
+
+.mission__head {
+  color: var(--rail-cyan);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  letter-spacing: 0.06em;
+}
+
+.mission__stars {
+  color: var(--rail-orange);
+}
+
+.mission__title {
+  color: var(--rail-white);
+}
+
+.mission__emoji {
+  display: inline-grid;
+  place-items: center;
+  min-width: 29px;
+  height: 25px;
+  margin-right: 8px;
+  color: #07382e;
+  background: var(--rail-cyan);
+  border-radius: 7px;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  vertical-align: middle;
+}
+
+.mission__hint {
+  color: var(--rail-muted);
+}
+
+.mission__reward {
+  color: #ffe1a5;
+  background: rgba(255, 173, 47, 0.14);
+  border: 1px solid rgba(255, 173, 47, 0.34);
+}
+
+.mission__bar {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.mission__fill {
+  background: linear-gradient(90deg, var(--rail-cyan), #63f1d9);
+}
+
+/* --- 町とごほうび・ヘルプ --------------------------------------------- */
+.progress-btn {
+  top: 257px;
+  color: var(--rail-white);
+  background: var(--rail-panel);
+  border: 1px solid rgba(151, 132, 255, 0.62);
+  border-bottom: 5px solid #49368f;
+  box-shadow: var(--rail-shadow);
+}
+
+.progress-btn b {
+  background: #806cf0;
+}
+
+.help-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--rail-white);
+  background: var(--rail-panel);
+  border: 1px solid rgba(255, 173, 47, 0.55);
+  border-bottom: 5px solid #8e4f09;
+  box-shadow: var(--rail-shadow);
+}
+
+.help-btn .rail-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--rail-orange);
+}
+
+.help__step-icon .rail-icon {
+  width: 26px;
+  height: 26px;
+  color: var(--accent);
+}
+
+/* --- かんたん路線ビルダー --------------------------------------------- */
+.control-dock {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  z-index: 24;
+  width: min(620px, calc(100vw - 28px));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.control-dock > * {
+  pointer-events: auto;
+}
+
+.control-guide {
+  min-height: 49px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 15px 7px 8px;
+  color: var(--rail-white);
+  background: var(--rail-panel);
+  border: 1px solid rgba(39, 224, 193, 0.55);
+  border-bottom: 5px solid #061824;
+  border-radius: 17px;
+  box-shadow: var(--rail-shadow);
+}
+
+.control-guide__step {
+  width: 33px;
+  height: 33px;
+  display: grid;
+  place-items: center;
+  flex: none;
+  color: #07372e;
+  background: var(--rail-cyan);
+  border-radius: 10px;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 17px;
+  font-weight: 1000;
+  box-shadow: 0 0 14px rgba(39, 224, 193, 0.45);
+}
+
+.control-guide > span:last-child {
+  display: flex;
+  flex-direction: column;
+}
+
+.control-guide small {
+  color: var(--rail-cyan);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+}
+
+.control-guide b {
+  font-size: 13px;
+}
+
+.route-builder {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.route-builder__steps {
+  align-self: center;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 8px;
+  color: #a9bdc9;
+  background: var(--rail-panel);
+  border: 1px solid var(--rail-border);
+  border-radius: 999px;
+  box-shadow: var(--rail-shadow);
+  font-size: 9px;
+  font-weight: 900;
+}
+
+.route-builder__steps span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  border-radius: 999px;
+}
+
+.route-builder__steps i {
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  color: inherit;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  font-style: normal;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.route-builder__steps span.is-current {
+  color: #ffe8b5;
+  background: rgba(255, 173, 47, 0.18);
+}
+
+.route-builder__steps span.is-current i {
+  color: #1b2c37;
+  background: var(--rail-orange);
+  border-color: var(--rail-orange);
+}
+
+.route-builder__steps span.is-done {
+  color: var(--rail-cyan);
+}
+
+.route-builder__steps span.is-done i {
+  color: #07382e;
+  background: var(--rail-cyan);
+  border-color: var(--rail-cyan);
+}
+
+.route-builder__steps em {
+  width: 15px;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.23);
+}
+
+.route-ticket {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  padding: 13px 14px 12px;
+  color: var(--rail-white);
+  background:
+    linear-gradient(135deg, rgba(39, 224, 193, 0.11), transparent 45%),
+    linear-gradient(155deg, #173d51, #0b2435);
+  border: 1px solid rgba(39, 224, 193, 0.46);
+  border-bottom: 6px solid #051721;
+  border-radius: 21px;
+  box-shadow: var(--rail-shadow);
+  animation: ticket-in 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.route-ticket::before,
+.route-ticket::after {
+  content: '';
+  position: absolute;
+  top: 62px;
+  width: 18px;
+  height: 18px;
+  background: #8fd3ff;
+  border-radius: 50%;
+}
+
+.route-ticket::before {
+  left: -10px;
+}
+
+.route-ticket::after {
+  right: -10px;
+}
+
+@keyframes ticket-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.route-ticket__line {
+  display: grid;
+  grid-template-columns: minmax(100px, 1fr) minmax(130px, 1.3fr) minmax(100px, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.route-ticket__station {
+  overflow: hidden;
+  padding: 8px 10px;
+  color: #092638;
+  background: var(--rail-white);
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 1000;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.route-ticket__rail {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--rail-cyan);
+}
+
+.route-ticket__rail i {
+  flex: 1;
+  height: 3px;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--rail-cyan) 0 7px,
+    transparent 7px 11px
+  );
+}
+
+.route-ticket__rail .rail-icon {
+  width: 27px;
+  height: 27px;
+  filter: drop-shadow(0 0 7px rgba(39, 224, 193, 0.55));
+}
+
+.route-ticket__facts {
+  display: flex;
+  align-items: stretch;
+  gap: 7px;
+  margin-top: 11px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(157, 198, 212, 0.32);
+}
+
+.route-ticket__facts > span {
+  min-width: 0;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  padding: 6px 8px;
+  background: rgba(255, 255, 255, 0.055);
+  border-radius: 9px;
+}
+
+.route-ticket__facts small {
+  color: var(--rail-muted);
+  font-size: 8px;
+  font-weight: 900;
+}
+
+.route-ticket__facts b {
+  margin-top: 2px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.route-ticket__facts .route-ticket__total {
+  flex: 1.25;
+  background: rgba(255, 173, 47, 0.15);
+  border: 1px solid rgba(255, 173, 47, 0.32);
+}
+
+.route-ticket__total strong {
+  color: #ffe6ad;
+  font-size: 15px;
+}
+
+.route-ticket__balance {
+  margin: 8px 0 0;
+  color: var(--rail-cyan-soft);
+  font-size: 10px;
+  font-weight: 900;
+  text-align: right;
+}
+
+.route-ticket__balance.is-short {
+  color: #ffb4ba;
+}
+
+.route-ticket__actions {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.route-ticket__actions button {
+  min-height: 47px;
+  border-radius: 13px;
+  font-weight: 1000;
+}
+
+.route-ticket__cancel {
+  color: var(--rail-muted);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.route-ticket__confirm {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  color: #342006;
+  background: linear-gradient(180deg, #ffc255, var(--rail-orange));
+  border-bottom: 5px solid var(--rail-orange-dark);
+  box-shadow: 0 7px 18px rgba(255, 151, 26, 0.26);
+  font-size: 15px;
+}
+
+.route-ticket__confirm .rail-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.route-ticket__confirm:disabled {
+  color: #82909a;
+  background: #445762;
+  border-bottom-color: #293a44;
+  box-shadow: none;
+}
+
+.control-dock__bar {
+  display: flex;
+  gap: 6px;
+  padding: 7px;
+  background: var(--rail-panel);
+  border: 1px solid var(--rail-border);
+  border-bottom: 6px solid #051721;
+  border-radius: 20px;
+  box-shadow: var(--rail-shadow);
+}
+
+.dock-action {
+  position: relative;
+  width: 106px;
+  min-height: 67px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: var(--rail-muted);
+  border-radius: 14px;
+  font-weight: 900;
+}
+
+.dock-action .rail-icon {
+  width: 25px;
+  height: 25px;
+}
+
+.dock-action span {
+  font-size: 11px;
+}
+
+.dock-action.is-active {
+  color: var(--rail-cyan-soft);
+  background: rgba(39, 224, 193, 0.13);
+  box-shadow: inset 0 0 0 1px rgba(39, 224, 193, 0.32);
+}
+
+.dock-action--primary {
+  width: 154px;
+  color: #ffe6ad;
+  background: rgba(255, 173, 47, 0.12);
+}
+
+.dock-action--primary.is-active {
+  color: #2a1c06;
+  background: linear-gradient(180deg, #ffc45d, var(--rail-orange));
+  box-shadow: inset 0 0 0 1px #ffd99d, 0 0 18px rgba(255, 173, 47, 0.26);
+}
+
+.dock-action--primary.is-recommended {
+  animation: dock-pulse 1.25s ease-in-out infinite;
+}
+
+.dock-action--primary > small {
+  position: absolute;
+  top: -14px;
+  padding: 3px 8px;
+  color: #07372e;
+  background: var(--rail-cyan);
+  border: 2px solid var(--rail-navy);
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 1000;
+}
+
+@keyframes dock-pulse {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+.advanced-tools {
+  display: grid;
+  grid-template-columns: auto auto auto;
+  gap: 6px;
+  padding: 9px;
+  color: var(--rail-white);
+  background: var(--rail-panel);
+  border: 1px solid var(--rail-border);
+  border-radius: 16px;
+  box-shadow: var(--rail-shadow);
+}
+
+.advanced-tools__label {
+  grid-column: 1 / -1;
+  color: var(--rail-cyan);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.advanced-tools button {
+  min-height: 39px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 9px;
+  color: var(--rail-white);
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.advanced-tools button.is-active {
+  color: #07372e;
+  background: var(--rail-cyan);
+}
+
+.advanced-tools button .rail-icon {
+  width: 17px;
+  height: 17px;
+}
+
+.advanced-tools .advanced-tools__danger {
+  color: #ffc6ca;
+}
+
+.advanced-tools > small {
+  grid-column: 1 / -1;
+  color: var(--rail-muted);
+  font-size: 8px;
+  text-align: center;
+}
+
+.manual-quote {
+  padding: 6px 12px;
+  color: #09372f;
+  background: var(--rail-cyan);
+  border-radius: 999px;
+  box-shadow: var(--rail-shadow);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.manual-quote.is-short {
+  color: #fff;
+  background: #dc4450;
+}
+
+/* --- 町のルート選択 ---------------------------------------------------- */
+.town-label.is-route-start .town-label__name {
+  background: var(--rail-cyan);
+  color: #07372e;
+}
+
+.town-label.is-route-end .town-label__name {
+  background: var(--rail-orange);
+  color: #3a2306;
+}
+
+.town-label__route {
+  padding: 2px 7px;
+  color: #fff;
+  background: var(--rail-navy);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 999px;
+  box-shadow: 0 2px 7px rgba(5, 22, 33, 0.3);
+  font-size: 8px;
+  font-weight: 1000;
+}
+
+/* --- 選択情報パネルも司令室に統一 ------------------------------------- */
+.inspector {
+  top: 86px;
+  color: var(--rail-white);
+  background: var(--rail-panel);
+  border: 1px solid var(--rail-border);
+  border-bottom: 5px solid #061824;
+  box-shadow: var(--rail-shadow);
+}
+
+.inspector__close,
+.insp__row span:first-child,
+.insp__note,
+.insp__blocktitle {
+  color: var(--rail-muted);
+}
+
+.insp__row {
+  border-bottom-color: rgba(255, 255, 255, 0.12);
+}
+
+.insp__station {
+  color: var(--rail-cyan-soft);
+  background: rgba(39, 224, 193, 0.12);
+}
+
+.town-level-card {
+  color: var(--rail-white);
+  background: rgba(39, 224, 193, 0.08);
+  border-color: rgba(39, 224, 193, 0.26);
+}
+
+.town-level-card small {
+  color: var(--rail-muted);
+}
+
+.insp__level {
+  color: var(--rail-cyan-soft);
+  background: rgba(39, 224, 193, 0.13);
+}
+
+.btn--primary {
+  color: #07372e;
+  background: var(--rail-cyan);
+  border-color: var(--rail-cyan);
+  border-bottom-color: #07937b;
+}
+
+/* --- 初回画面：未来の運行司令室 --------------------------------------- */
+.welcome--v3 {
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 20% 15%, rgba(39, 224, 193, 0.18), transparent 28%),
+    radial-gradient(circle at 82% 80%, rgba(255, 173, 47, 0.16), transparent 30%),
+    rgba(6, 29, 44, 0.82);
+}
+
+.welcome__grid {
+  position: absolute;
+  inset: -30%;
+  opacity: 0.18;
+  background-image:
+    linear-gradient(rgba(93, 224, 222, 0.25) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(93, 224, 222, 0.25) 1px, transparent 1px);
+  background-size: 42px 42px;
+  transform: perspective(650px) rotateX(64deg) translateY(18%);
+  transform-origin: center;
+  animation: grid-drift 16s linear infinite;
+}
+
+@keyframes grid-drift {
+  from { background-position: 0 0; }
+  to { background-position: 0 42px; }
+}
+
+.welcome--v3 .welcome__card {
+  position: relative;
+  color: var(--rail-white);
+  background:
+    linear-gradient(145deg, rgba(39, 224, 193, 0.08), transparent 40%),
+    linear-gradient(160deg, #173f54, #0a2232);
+  border: 1px solid rgba(126, 233, 219, 0.48);
+  border-bottom: 9px solid #051620;
+  box-shadow: 0 24px 75px rgba(1, 13, 22, 0.55);
+}
+
+.welcome__status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  color: var(--rail-cyan);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+}
+
+.welcome__status span {
+  width: 7px;
+  height: 7px;
+  background: var(--rail-cyan);
+  border-radius: 50%;
+  box-shadow: 0 0 10px var(--rail-cyan);
+}
+
+.welcome__train-mark {
+  width: 70px;
+  height: 70px;
+  display: grid;
+  place-items: center;
+  margin: 9px auto 5px;
+  color: var(--rail-cyan);
+  background: rgba(39, 224, 193, 0.1);
+  border: 1px solid rgba(39, 224, 193, 0.34);
+  border-radius: 22px;
+  box-shadow: inset 0 0 25px rgba(39, 224, 193, 0.08), 0 0 24px rgba(39, 224, 193, 0.13);
+}
+
+.welcome__train-mark .rail-icon {
+  width: 43px;
+  height: 43px;
+}
+
+.welcome--v3 .welcome__eyebrow {
+  color: #ffe7b0;
+  background: rgba(255, 173, 47, 0.14);
+  border: 1px solid rgba(255, 173, 47, 0.28);
+}
+
+.welcome--v3 h1 {
+  margin-top: 6px;
+  color: var(--rail-white);
+  letter-spacing: 0.02em;
+}
+
+.welcome--v3 .welcome__lead {
+  color: var(--rail-muted);
+}
+
+.welcome--v3 .welcome-step {
+  color: var(--rail-white);
+  background: rgba(255, 255, 255, 0.055);
+  border-color: rgba(135, 224, 218, 0.2);
+}
+
+.welcome--v3 .welcome-step > .rail-icon {
+  width: 35px;
+  height: 35px;
+  color: var(--rail-cyan);
+}
+
+.welcome--v3 .welcome-step__number {
+  color: #07372e;
+  background: var(--rail-cyan);
+}
+
+.welcome--v3 .welcome__arrow {
+  color: var(--rail-orange);
+  font-size: 32px;
+}
+
+.welcome--v3 .welcome__start {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  color: #302006;
+  background: linear-gradient(180deg, #ffc75f, var(--rail-orange));
+  border-bottom-color: var(--rail-orange-dark);
+  box-shadow: 0 9px 26px rgba(255, 155, 24, 0.27);
+}
+
+.welcome--v3 .welcome__start .rail-icon {
+  width: 21px;
+  height: 21px;
+}
+
+.welcome--v3 .welcome__save {
+  color: var(--rail-muted);
+}
+
+/* route-ticketが開いている時は、同じ案内を重ねない */
+.control-dock:has(.route-ticket) .control-guide {
+  display: none;
+}
+
+.toast {
+  color: var(--rail-white);
+  background: var(--rail-panel);
+  border-color: var(--rail-orange);
+  box-shadow: var(--rail-shadow);
+}
+
+.toast--good {
+  color: var(--rail-cyan-soft);
+  background: var(--rail-panel);
+  border-color: var(--rail-cyan);
+}
+
+.toast--bad {
+  color: #ffd1d4;
+  background: var(--rail-panel);
+}
+
+/* --- スマホ ------------------------------------------------------------ */
+@media (max-width: 760px) {
+  .topbar--control {
+    grid-template-columns: 48px minmax(0, 1fr) 48px;
+  }
+
+  .topbar--control .brand {
+    width: 48px;
+    height: 52px;
+    padding: 0;
+  }
+
+  .topbar--control .brand__logo {
+    width: 34px;
+    height: 34px;
+  }
+
+  .brand__copy {
+    display: none;
+  }
+
+  .topbar--control .money-card {
+    height: 58px;
+  }
+
+  .topbar--control .settings__toggle {
+    width: 48px;
+    height: 52px;
+  }
+
+  .topbar--control .speed {
+    top: 69px;
+  }
+
+  .mission {
+    top: 76px;
+  }
+
+  .progress-btn {
+    top: 228px;
+  }
+
+  .help-btn {
+    top: 278px;
+  }
+
+  .control-dock {
+    bottom: 6px;
+    width: calc(100vw - 12px);
+    gap: 5px;
+  }
+
+  .control-guide {
+    min-height: 42px;
+    padding: 5px 10px 5px 6px;
+  }
+
+  .control-guide__step {
+    width: 29px;
+    height: 29px;
+    font-size: 14px;
+  }
+
+  .control-guide b {
+    font-size: 10px;
+  }
+
+  .route-builder__steps {
+    max-width: 100%;
+    gap: 2px;
+    font-size: 8px;
+  }
+
+  .route-builder__steps span {
+    gap: 3px;
+    padding: 2px 4px;
+  }
+
+  .route-builder__steps em {
+    width: 7px;
+  }
+
+  .route-ticket {
+    padding: 10px;
+    border-radius: 17px;
+  }
+
+  .route-ticket::before,
+  .route-ticket::after {
+    top: 53px;
+  }
+
+  .route-ticket__line {
+    grid-template-columns: minmax(75px, 1fr) minmax(80px, 1fr) minmax(75px, 1fr);
+    gap: 5px;
+  }
+
+  .route-ticket__station {
+    padding: 7px 5px;
+    font-size: 10px;
+  }
+
+  .route-ticket__rail {
+    gap: 3px;
+  }
+
+  .route-ticket__rail .rail-icon {
+    width: 22px;
+    height: 22px;
+  }
+
+  .route-ticket__facts {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    margin-top: 8px;
+    padding-top: 7px;
+  }
+
+  .route-ticket__facts > span {
+    padding: 4px 6px;
+  }
+
+  .route-ticket__facts .route-ticket__total {
+    grid-column: span 2;
+  }
+
+  .route-ticket__facts b {
+    font-size: 9px;
+  }
+
+  .route-ticket__total strong {
+    font-size: 12px;
+  }
+
+  .route-ticket__balance {
+    margin-top: 5px;
+    font-size: 9px;
+  }
+
+  .route-ticket__actions {
+    grid-template-columns: 90px 1fr;
+    margin-top: 6px;
+  }
+
+  .route-ticket__actions button {
+    min-height: 42px;
+    font-size: 10px;
+  }
+
+  .route-ticket__confirm {
+    font-size: 12px !important;
+  }
+
+  .control-dock__bar {
+    padding: 5px;
+    border-radius: 17px;
+  }
+
+  .dock-action {
+    width: 78px;
+    min-height: 60px;
+  }
+
+  .dock-action--primary {
+    width: 128px;
+  }
+
+  .dock-action .rail-icon {
+    width: 22px;
+    height: 22px;
+  }
+
+  .dock-action span {
+    font-size: 9px;
+  }
+
+  .advanced-tools {
+    width: 100%;
+    grid-template-columns: 1fr;
+    max-height: 190px;
+    overflow-y: auto;
+  }
+
+  .advanced-tools button {
+    min-height: 35px;
+  }
+
+  .inspector {
+    bottom: 145px;
+  }
+
+  .toast {
+    bottom: 148px;
+  }
+
+  .welcome--v3 .welcome__card {
+    padding: 17px 14px 15px;
+  }
+
+  .welcome__train-mark {
+    width: 53px;
+    height: 53px;
+    margin-top: 6px;
+  }
+
+  .welcome__train-mark .rail-icon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .welcome--v3 h1 {
+    font-size: 23px;
+  }
+
+  .welcome--v3 .welcome-step > .rail-icon {
+    width: 27px;
+    height: 27px;
+  }
+}
+
+@media (max-height: 670px) {
+  .welcome__train-mark {
+    width: 45px;
+    height: 45px;
+  }
+
+  .welcome__train-mark .rail-icon {
+    width: 28px;
+    height: 28px;
+  }
+}

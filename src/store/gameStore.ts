@@ -49,6 +49,8 @@ export interface GameState {
   anchorNode: NodeKey | null;
   hoverNode: NodeKey | null;
   lineAnchorTown: string | null;
+  routeStartTown: string | null;
+  routeEndTown: string | null;
   selection: Selection;
   speed: number;
   muted: boolean;
@@ -70,6 +72,8 @@ export interface GameState {
   select: (sel: Selection) => void;
   buildTrackPath: (a: NodeKey, b: NodeKey) => void;
   demolishNode: (node: NodeKey) => void;
+  confirmEasyRoute: () => void;
+  cancelEasyRoute: () => void;
   createLine: (aTownId: string, bTownId: string) => void;
   buyTrain: (lineId: string) => void;
   deleteLine: (lineId: string) => void;
@@ -160,6 +164,8 @@ function makeInitialState(loadSave = true) {
     anchorNode: null as NodeKey | null,
     hoverNode: null as NodeKey | null,
     lineAnchorTown: null as string | null,
+    routeStartTown: null as string | null,
+    routeEndTown: null as string | null,
     selection: null as Selection,
     speed: 1,
     muted: isMuted(),
@@ -191,7 +197,14 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   setBuildMode: (m) => {
     play('click');
-    set({ buildMode: m, anchorNode: null, lineAnchorTown: null });
+    set({
+      buildMode: m,
+      anchorNode: null,
+      lineAnchorTown: null,
+      routeStartTown: null,
+      routeEndTown: null,
+      selection: null,
+    });
   },
   setHover: (k) => set({ hoverNode: k }),
 
@@ -211,8 +224,19 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   townClick: (id) => {
-    const { buildMode, lineAnchorTown } = get();
-    if (buildMode === 'line') {
+    const { buildMode, lineAnchorTown, routeStartTown } = get();
+    if (buildMode === 'route') {
+      if (!routeStartTown) {
+        set({ routeStartTown: id, routeEndTown: null });
+        get().pushToast('1つめの 町を えらんだよ。つなぎたい 町を もう1つ おしてね');
+      } else if (routeStartTown === id) {
+        set({ routeStartTown: null, routeEndTown: null });
+        get().pushToast('町を えらびなおせるよ');
+      } else {
+        set({ routeEndTown: id });
+        play('click');
+      }
+    } else if (buildMode === 'line') {
       if (!lineAnchorTown) {
         set({ lineAnchorTown: id });
         get().pushToast('しゅっぱつする 町を えらんだよ。もう1つ 町を おしてね');
@@ -294,6 +318,72 @@ export const useGameStore = create<GameState>((set, get) => ({
         ? `🧹 せんろを かたづけたよ。ろせんも おしまい（+${refund.toLocaleString()}円）`
         : `🧹 せんろを かたづけたよ（+${refund.toLocaleString()}円）`,
     );
+  },
+
+  confirmEasyRoute: () => {
+    const state = get();
+    const start = state.routeStartTown ? TOWNS_BY_ID.get(state.routeStartTown) : null;
+    const end = state.routeEndTown ? TOWNS_BY_ID.get(state.routeEndTown) : null;
+    if (!start || !end || start.id === end.id) return;
+
+    const path = manhattanPath(key(start.x, start.z), key(end.x, end.z));
+    const newEdges: string[] = [];
+    let trackCost = 0;
+    for (let index = 0; index < path.length - 1; index++) {
+      const edge = edgeKey(path[index], path[index + 1]);
+      if (!state.trackEdges.has(edge)) {
+        newEdges.push(edge);
+        trackCost += trackEdgeCost(path[index], path[index + 1], state.terrain);
+      }
+    }
+    const totalCost = trackCost + TRAIN_COST;
+    if (state.money < totalCost) {
+      play('error');
+      get().pushToast(
+        `あと ${(totalCost - state.money).toLocaleString()}円 ためると つくれるよ`,
+        'bad',
+      );
+      return;
+    }
+
+    const nextEdges = new Set(state.trackEdges);
+    for (const edge of newEdges) nextEdges.add(edge);
+    const lineNumber = state.lineSeq + 1;
+    const trainNumber = state.trainSeq + 1;
+    const lineId = `ln${lineNumber}`;
+    const trainId = `tr${trainNumber}`;
+    const color = LINE_COLORS[(lineNumber - 1) % LINE_COLORS.length];
+    const stations = path
+      .filter((node) => TOWN_BY_NODE.has(node))
+      .map((node) => TOWN_BY_NODE.get(node)!.id);
+    const line: Line = {
+      id: lineId,
+      name: `${start.name}・${end.name}せん`,
+      color,
+      pathNodes: path,
+      stations,
+    };
+
+    addTrainRuntime(sim, trainId, lineId, path, stations, color, true);
+    play('whistle');
+    set({
+      trackEdges: nextEdges,
+      lines: [...state.lines, line],
+      trainDefs: [...state.trainDefs, { id: trainId, lineId, color }],
+      money: state.money - totalCost,
+      lineSeq: lineNumber,
+      trainSeq: trainNumber,
+      buildMode: 'inspect',
+      routeStartTown: null,
+      routeEndTown: null,
+      selection: { type: 'line', id: lineId },
+    });
+    get().pushToast(`「${line.name}」が しゅっぱつ！`, 'good');
+  },
+
+  cancelEasyRoute: () => {
+    play('click');
+    set({ routeStartTown: null, routeEndTown: null });
   },
 
   createLine: (aTownId, bTownId) => {
