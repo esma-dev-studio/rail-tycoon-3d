@@ -11,11 +11,12 @@ import {
   townLevelFor,
   type TownProgress,
 } from '../data/progression';
+import { DECORATIONS_BY_ID } from '../data/decorations';
 import { key, edgeKey, manhattanPath, neighbors4 } from '../utils/grid';
 import { bfsPath } from '../sim/pathfinding';
 import { trackEdgeCost } from '../sim/economy';
 import { sim } from '../sim/simInstance';
-import { addTrainRuntime, removeTrainsOfLine } from '../sim/simulation';
+import { addTrainRuntime, primeFirstTrip, removeTrainsOfLine } from '../sim/simulation';
 import { play, isMuted, setMuted } from '../utils/sound';
 import type {
   BuildMode,
@@ -27,6 +28,15 @@ import type {
   Town,
   TrainDef,
 } from '../types/game';
+
+export interface Celebration {
+  id: number;
+  eyebrow: string;
+  title: string;
+  message: string;
+  emoji: string;
+  color: string;
+}
 
 export interface GameState {
   towns: Town[];
@@ -41,6 +51,8 @@ export interface GameState {
   townProgress: Record<string, TownProgress>;
   savingsGoalIndex: number;
 
+  ownedDecorations: string[];
+  celebration: Celebration | null;
   trackEdges: Set<string>;
   lines: Line[];
   trainDefs: TrainDef[];
@@ -76,6 +88,8 @@ export interface GameState {
   cancelEasyRoute: () => void;
   createLine: (aTownId: string, bTownId: string) => void;
   buyTrain: (lineId: string) => void;
+  buyDecoration: (id: string) => void;
+  dismissCelebration: () => void;
   deleteLine: (lineId: string) => void;
   deliver: (fare: number, townId: string) => void;
   completeMission: (index: number) => void;
@@ -91,6 +105,7 @@ export interface GameState {
 const SAVE_KEY = 'rail-tycoon-3d-save-v2';
 
 interface SavedGame {
+  adventureVersion?: number;
   money: number;
   bestMoney: number;
   totalDelivered: number;
@@ -104,6 +119,7 @@ interface SavedGame {
   missionIndex: number;
   lineSeq: number;
   trainSeq: number;
+  ownedDecorations: string[];
 }
 
 function emptyTownProgress(): Record<string, TownProgress> {
@@ -135,9 +151,14 @@ function loadSavedGame(): SavedGame | null {
       trainDefs: parsed.trainDefs,
       townProgress: { ...emptyTownProgress(), ...(parsed.townProgress ?? {}) },
       savingsGoalIndex: Math.min(parsed.savingsGoalIndex ?? 0, SAVINGS_GOALS.length),
-      missionIndex: Math.min(parsed.missionIndex ?? 0, MISSIONS.length),
+      missionIndex:
+        parsed.adventureVersion === 4
+          ? Math.min(parsed.missionIndex ?? 0, MISSIONS.length) : 0,
       lineSeq: parsed.lineSeq ?? parsed.lines.length,
       trainSeq: parsed.trainSeq ?? parsed.trainDefs.length,
+      ownedDecorations: Array.isArray(parsed.ownedDecorations)
+        ? parsed.ownedDecorations.filter((id) => DECORATIONS_BY_ID.has(id))
+        : [],
     };
   } catch {
     return null;
@@ -160,6 +181,8 @@ function makeInitialState(loadSave = true) {
     trackEdges: new Set<string>(saved?.trackEdges ?? []),
     lines: saved?.lines ?? ([] as Line[]),
     trainDefs: saved?.trainDefs ?? ([] as TrainDef[]),
+    ownedDecorations: saved?.ownedDecorations ?? [],
+    celebration: null as Celebration | null,
     buildMode: 'inspect' as BuildMode,
     anchorNode: null as NodeKey | null,
     hoverNode: null as NodeKey | null,
@@ -365,6 +388,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     };
 
     addTrainRuntime(sim, trainId, lineId, path, stations, color, true);
+    primeFirstTrip(sim, trainId, start.id, end.id);
     play('whistle');
     set({
       trackEdges: nextEdges,
@@ -377,6 +401,14 @@ export const useGameStore = create<GameState>((set, get) => ({
       routeStartTown: null,
       routeEndTown: null,
       selection: { type: 'line', id: lineId },
+      celebration: {
+        id: Date.now(),
+        eyebrow: 'せんろ かんせい！',
+        title: line.name,
+        message: `${start.name}から ${end.name}へ、3人の おきゃくさんを のせて しゅっぱつ！`,
+        emoji: '🚆',
+        color,
+      },
     });
     get().pushToast(`「${line.name}」が しゅっぱつ！`, 'good');
   },
@@ -386,10 +418,43 @@ export const useGameStore = create<GameState>((set, get) => ({
     set({ routeStartTown: null, routeEndTown: null });
   },
 
+  buyDecoration: (id) => {
+    const state = get();
+    const item = DECORATIONS_BY_ID.get(id);
+    if (!item || state.ownedDecorations.includes(id)) return;
+    if (state.money < item.price) {
+      play('error');
+      get().pushToast(
+        `あと ${(item.price - state.money).toLocaleString()}円で「${item.name}」を おけるよ`,
+        'bad',
+      );
+      return;
+    }
+    const town = TOWNS_BY_ID.get(item.townId);
+    play('fanfare');
+    set({
+      money: state.money - item.price,
+      ownedDecorations: [...state.ownedDecorations, id],
+      celebration: {
+        id: Date.now(),
+        eyebrow: '町へ プレゼント！',
+        title: item.name,
+        message: `${town?.name ?? '町'}に あたらしい かざりが できたよ。3Dの町を 見てみよう！`,
+        emoji: item.emoji,
+        color: item.color,
+      },
+    });
+  },
+
+  dismissCelebration: () => {
+    play('click');
+    set({ celebration: null });
+  },
   createLine: (aTownId, bTownId) => {
     const a = TOWNS_BY_ID.get(aTownId);
     const b = TOWNS_BY_ID.get(bTownId);
     if (!a || !b || a.id === b.id) return;
+
     const { trackEdges, lines, lineSeq, money } = get();
     const path = bfsPath(trackEdges, key(a.x, a.z), key(b.x, b.z));
     if (!path) {
@@ -495,6 +560,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       lines: s.lines,
       trainDefs: s.trainDefs,
       towns: s.towns,
+      ownedDecorations: s.ownedDecorations,
     });
     if (cur < max) return;
 
@@ -506,6 +572,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       money: savings.money,
       bestMoney: Math.max(s.bestMoney, savings.money),
       savingsGoalIndex: savings.index,
+      celebration: isLast ? null : s.celebration,
       gameCleared: isLast || s.gameCleared,
     });
     if (!isLast) {
@@ -571,6 +638,7 @@ useGameStore.subscribe((state) => {
   if (saveTimer) return;
   saveTimer = setTimeout(() => {
     const saved: SavedGame = {
+      adventureVersion: 4,
       money: state.money,
       bestMoney: state.bestMoney,
       totalDelivered: state.totalDelivered,
@@ -580,6 +648,7 @@ useGameStore.subscribe((state) => {
       lines: state.lines,
       trainDefs: state.trainDefs,
       townProgress: state.townProgress,
+      ownedDecorations: state.ownedDecorations,
       savingsGoalIndex: state.savingsGoalIndex,
       missionIndex: state.missionIndex,
       lineSeq: state.lineSeq,

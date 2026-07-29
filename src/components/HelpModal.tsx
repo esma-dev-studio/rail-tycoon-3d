@@ -13,50 +13,53 @@ export function HelpModal() {
       </button>
       {open && (
         <div className="help" role="dialog" aria-modal="true" aria-labelledby="help-title">
-          <div className="help__card">
+          <div className="help__card help__card--v4">
             <div className="help__head">
-              <h2 className="help__title" id="help-title">あそびかた</h2>
+              <div>
+                <span className="help__eyebrow">こまったら ここ！</span>
+                <h2 className="help__title" id="help-title">あそびかた</h2>
+              </div>
               <button className="modal-close" onClick={() => setOpen(false)} aria-label="とじる">✕</button>
             </div>
             <ol className="help__steps">
               <li>
                 <span className="help__step-icon"><RailIcon name="route" /></span>
                 <div>
-                  <b>新しいせんろ</b>
-                  <p>町を 2つ おして、ねだんを見たら「このせんを つくる！」</p>
-                  <small>せんろと 1だいめの電車が いっしょに できるよ</small>
+                  <b>1　町を 2つ えらぶ</b>
+                  <p>下の「新しいせんろ」を おして、町の名前を 2つ おそう。</p>
+                  <small>ねだんを見てから つくれるので、まちがえても だいじょうぶ！</small>
                 </div>
               </li>
               <li>
-                <span className="help__step-icon"><RailIcon name="coin" /></span>
+                <span className="help__step-icon"><RailIcon name="people" /></span>
                 <div>
-                  <b>お金を ためる</b>
-                  <p>電車が おきゃくさんを はこぶと、お金が ふえるよ。</p>
-                  <small>ちょきんの もくひょうで ごほうびゲット！</small>
+                  <b>2　電車と えがおを 見る</b>
+                  <p>さいしょから 3人が のっているよ。町につくと お金が ふえる！</p>
+                  <small>町のふきだしには、みんなの いきたい町が 出るよ</small>
                 </div>
               </li>
               <li>
-                <span className="help__step-icon"><RailIcon name="city" /></span>
+                <span className="help__step-icon"><RailIcon name="gift" /></span>
                 <div>
-                  <b>町を そだてる</b>
-                  <p>町へ 人を はこぶと、たてものや かざりが ふえるよ。</p>
-                  <small>「町と ごほうび」で せいちょうを 見られるよ</small>
+                  <b>3　町に プレゼント</b>
+                  <p>「ごほうびの町」で かざりを かうと、3Dの町に あらわれるよ。</p>
+                  <small>せんろを ひろげると、えきスタンプも あつまる！</small>
                 </div>
               </li>
               <li>
                 <span className="help__step-icon"><RailIcon name="tools" /></span>
                 <div>
-                  <b>じゆうに つくる</b>
-                  <p>なれたら、せんろを 1マスずつ つくることも できるよ。</p>
+                  <b>もっと じゆうに</b>
+                  <p>なれたら「じゆう」で、せんろを 1マスずつ つくれるよ。</p>
                   <small>
-                    1マス {TRACK_COST}円 ／ 川の はし {BRIDGE_COST}円 ／ 電車 {TRAIN_COST.toLocaleString()}円
+                    せんろ {TRACK_COST}円 ／ はし {BRIDGE_COST}円 ／ 電車 {TRAIN_COST.toLocaleString()}円
                   </small>
                 </div>
               </li>
             </ol>
-            <p className="help__camera">ドラッグで まわす ／ ホイールで ちかづく</p>
+            <p className="help__camera">1本ゆびで まわす　・　2本ゆびで ちかづく</p>
             <button className="btn btn--primary help__close" onClick={() => setOpen(false)}>
-              わかった！
+              やってみる！
             </button>
           </div>
         </div>

@@ -7,6 +7,8 @@ import { HelpModal } from './HelpModal';
 import { Confetti } from './Confetti';
 import { Toast } from './Toast';
 import { ProgressCenter } from './ProgressCenter';
+import { MascotCoach } from './MascotCoach';
+import { CelebrationOverlay } from './CelebrationOverlay';
 import { WelcomeOverlay } from './WelcomeOverlay';
 
 export function Layout() {
@@ -16,6 +18,8 @@ export function Layout() {
       <MissionPanel />
       <InspectorPanel />
       <ProgressCenter />
+      <MascotCoach />
+      <CelebrationOverlay />
       <BuildToolbar />
       <HelpModal />
       <Toast />

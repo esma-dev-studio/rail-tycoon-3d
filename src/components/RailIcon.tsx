@@ -16,6 +16,8 @@ export type RailIconName =
   | 'play'
   | 'fast'
   | 'station'
+  | 'gift'
+  | 'stamp'
   | 'sparkle';
 
 interface RailIconProps extends Omit<SVGProps<SVGSVGElement>, 'name'> {
@@ -126,6 +128,18 @@ export function RailIcon({ name, className = '', ...props }: RailIconProps) {
         {name === 'station' && (
           <>
             <path d="M4 21V9l8-5 8 5v12M2 21h20M8 21v-6h8v6M7 10h10" />
+          </>
+        )}
+        {name === 'gift' && (
+          <>
+            <path d="M3 10h18v11H3ZM2 6h20v4H2ZM12 6v15" />
+            <path d="M12 6H8.5a2.5 2.5 0 1 1 2.1-3.8L12 6Zm0 0h3.5a2.5 2.5 0 1 0-2.1-3.8L12 6Z" />
+          </>
+        )}
+        {name === 'stamp' && (
+          <>
+            <path d="M8 4a4 4 0 0 1 8 0c0 2.2-1 3.3-1 5 0 1.2.8 2.2 2.2 3H6.8C8.2 11.2 9 10.2 9 9c0-1.7-1-2.8-1-5Z" />
+            <path d="M5 12h14l1 4H4l1-4Zm0 4v4h14v-4" />
           </>
         )}
         {name === 'sparkle' && (

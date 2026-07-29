@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { RailIcon } from './RailIcon';
+import { ConductorMark } from './MascotCoach';
 
-const WELCOME_KEY = 'rail-tycoon-3d-welcome-v3';
+const WELCOME_KEY = 'rail-tycoon-3d-welcome-v4';
 
 function shouldShowWelcome(): boolean {
   if (typeof window === 'undefined') return true;
@@ -16,6 +17,7 @@ function shouldShowWelcome(): boolean {
 export function WelcomeOverlay() {
   const [open, setOpen] = useState(shouldShowWelcome);
   const setBuildMode = useGameStore((state) => state.setBuildMode);
+  const hasRailway = useGameStore((state) => state.lines.length > 0);
 
   if (!open) return null;
 
@@ -25,54 +27,54 @@ export function WelcomeOverlay() {
     } catch {
       // 保存できない環境でも、そのまま遊び始められる。
     }
-    setBuildMode('route');
+    setBuildMode(hasRailway ? 'inspect' : 'route');
     setOpen(false);
   };
 
   return (
-    <div className="welcome welcome--v3" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
-      <div className="welcome__grid" aria-hidden />
-      <div className="welcome__card">
-        <div className="welcome__status">
-          <span />
-          RAILWAY CONTROL
-        </div>
-        <div className="welcome__train-mark" aria-hidden>
-          <RailIcon name="train" />
-        </div>
-        <div className="welcome__eyebrow">きみが しゃちょう！</div>
-        <h1 id="welcome-title">でんしゃの町を つくろう</h1>
-        <p className="welcome__lead">
-          やることは かんたん。町を 2つ えらぶだけ！
-          <br />
-          せんろと 電車を いっしょに つくれるよ。
-        </p>
-
-        <div className="welcome__steps">
-          <div className="welcome-step">
-            <span className="welcome-step__number">1</span>
-            <RailIcon name="station" />
-            <b>町を<br />えらぶ</b>
-          </div>
-          <span className="welcome__arrow" aria-hidden>›</span>
-          <div className="welcome-step">
-            <span className="welcome-step__number">2</span>
-            <RailIcon name="route" />
-            <b>ねだんを<br />見る</b>
-          </div>
-          <span className="welcome__arrow" aria-hidden>›</span>
-          <div className="welcome-step">
-            <span className="welcome-step__number">3</span>
-            <RailIcon name="train" />
-            <b>電車が<br />しゅっぱつ</b>
+    <div className="welcome welcome--v4" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
+      <div className="welcome-v4__sky" aria-hidden>
+        <span />
+        <span />
+        <span />
+      </div>
+      <div className="welcome__card welcome-v4__card">
+        <div className="welcome-v4__hero">
+          <ConductorMark />
+          <div>
+            <span className="welcome__eyebrow">てつくんと いっしょに</span>
+            <h1 id="welcome-title">わくわく<br />でんしゃの町</h1>
+            <p>きみが しゃちょう！<br />町と町を せんろで つなごう。</p>
           </div>
         </div>
 
-        <button className="welcome__start" onClick={start} autoFocus>
+        <div className="welcome-v4__promise">
+          <div>
+            <span><RailIcon name="route" /></span>
+            <b>町を 2つ<br />えらぶだけ</b>
+          </div>
+          <i aria-hidden>→</i>
+          <div>
+            <span><RailIcon name="people" /></span>
+            <b>人が のって<br />お金が ふえる</b>
+          </div>
+          <i aria-hidden>→</i>
+          <div>
+            <span><RailIcon name="gift" /></span>
+            <b>町に かざりが<br />ふえていく</b>
+          </div>
+        </div>
+
+        <div className="welcome-v4__first">
+          <span>さいしょに やること</span>
+          <b>すきな町を 2つ えらぼう！</b>
+        </div>
+
+        <button className="welcome__start welcome-v4__start" onClick={start} autoFocus>
           <RailIcon name="play" />
-          町を えらんで はじめる
+          しゃちょうに なって はじめる
         </button>
-        <p className="welcome__save">つづきは じどうで きろくされるよ</p>
+        <p className="welcome__save">むずかしい そうさは ないよ　・　つづきは じどうで きろく</p>
       </div>
     </div>
   );

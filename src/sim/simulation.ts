@@ -75,6 +75,28 @@ export function addTrainRuntime(
   });
 }
 
+/**
+ * 新しい路線の最初の電車には、待ち時間なしでお客さんを乗せる。
+ * 「作ったのに何も起きない」をなくし、最初の到着で必ず収入と笑顔が返る。
+ */
+export function primeFirstTrip(
+  sim: SimState,
+  trainId: string,
+  fromTownId: string,
+  toTownId: string,
+  count = 3,
+): void {
+  const train = sim.trains.get(trainId);
+  if (!train) return;
+  for (let index = 0; index < count; index++) {
+    train.load.push({
+      id: ++sim.pseq,
+      fromTownId,
+      toTownId,
+    });
+  }
+}
+
 export function removeTrainsOfLine(sim: SimState, lineId: string): void {
   for (const [id, tr] of sim.trains) if (tr.lineId === lineId) sim.trains.delete(id);
 }

@@ -6,23 +6,6 @@ import { isBridgeEdge, trackEdgeCost } from '../sim/economy';
 import { useGameStore } from '../store/gameStore';
 import { RailIcon } from './RailIcon';
 
-function useCoach() {
-  const buildMode = useGameStore((state) => state.buildMode);
-  const routeStartTown = useGameStore((state) => state.routeStartTown);
-  const routeEndTown = useGameStore((state) => state.routeEndTown);
-  const lines = useGameStore((state) => state.lines);
-  const totalDelivered = useGameStore((state) => state.totalDelivered);
-
-  if (buildMode === 'route') {
-    if (!routeStartTown) return { step: 1, text: 'しゅっぱつする 町を おそう' };
-    if (!routeEndTown) return { step: 2, text: 'つなぎたい 町を もう1つ おそう' };
-    return { step: 3, text: 'ねだんを見て「このせんを つくる！」' };
-  }
-  if (lines.length === 0) return { step: 1, text: '「新しいせんろ」から はじめよう' };
-  if (totalDelivered === 0) return { step: 4, text: '電車が 人を はこぶところを 見てみよう' };
-  if (totalDelivered < 4) return { step: 5, text: `あと ${4 - totalDelivered}人で 町が レベルアップ！` };
-  return { step: 6, text: 'つぎは どの町へ せんろを のばす？' };
-}
 
 export function BuildToolbar() {
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -38,7 +21,6 @@ export function BuildToolbar() {
   const lines = useGameStore((state) => state.lines);
   const confirmEasyRoute = useGameStore((state) => state.confirmEasyRoute);
   const cancelEasyRoute = useGameStore((state) => state.cancelEasyRoute);
-  const coach = useCoach();
 
   const routePlan = useMemo(() => {
     const start = routeStartTown ? TOWNS_BY_ID.get(routeStartTown) : null;
@@ -91,13 +73,6 @@ export function BuildToolbar() {
 
   return (
     <div className="control-dock">
-      <div className="control-guide" aria-live="polite">
-        <span className="control-guide__step">{coach.step}</span>
-        <span>
-          <small>NEXT ACTION</small>
-          <b>{coach.text}</b>
-        </span>
-      </div>
 
       {buildMode === 'route' && (
         <div className="route-builder">
