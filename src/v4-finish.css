@@ -1,0 +1,145 @@
+/* V4の補助画面。主画面と同じ「上質なおもちゃ」質感にそろえる。 */
+.help__card--v4 {
+  width: min(720px, 100%);
+  color: var(--v4-ink);
+  background: linear-gradient(145deg, #fff, #fffaf0);
+  border: 4px solid #fff;
+  border-top: 8px solid var(--v4-blue);
+  border-bottom: 9px solid rgba(16, 53, 84, 0.22);
+  border-radius: 27px;
+  box-shadow: var(--v4-shadow-big);
+}
+
+.help__eyebrow {
+  color: var(--v4-blue);
+  font-size: 9px;
+  font-weight: 1000;
+}
+
+.help__card--v4 .help__title {
+  margin-top: 2px;
+  color: var(--v4-ink);
+}
+
+.help__card--v4 .help__steps {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.help__card--v4 .help__steps li {
+  color: var(--v4-ink);
+  background: #f2f9fb;
+  border: 1px solid #dcebef;
+  border-bottom: 4px solid #cbdce3;
+}
+
+.help__card--v4 .help__steps li:nth-child(2) {
+  background: #fff8df;
+  border-color: #f0d98f;
+}
+
+.help__card--v4 .help__steps li:nth-child(3) {
+  background: #f1edff;
+  border-color: #d8ceff;
+}
+
+.help__card--v4 .help__steps li:nth-child(4) {
+  background: #edf9f3;
+  border-color: #cceada;
+}
+
+.help__card--v4 .help__step-icon {
+  color: var(--v4-blue);
+  background: #fff;
+  border-radius: 13px;
+  box-shadow: 0 3px 8px rgba(16, 53, 84, 0.1);
+}
+
+.help__card--v4 .help__steps p,
+.help__card--v4 .help__steps small,
+.help__card--v4 .help__camera {
+  color: var(--v4-muted);
+}
+
+.help__card--v4 .help__close {
+  color: #fff;
+  background: linear-gradient(180deg, #2ddbb9, #14aa8f);
+  border-bottom-color: #087b69;
+}
+
+.clear--v4 {
+  background:
+    radial-gradient(circle at 20% 15%, rgba(255, 229, 95, 0.3), transparent 30%),
+    radial-gradient(circle at 80% 80%, rgba(55, 229, 194, 0.27), transparent 32%),
+    rgba(15, 51, 77, 0.58);
+  backdrop-filter: blur(6px);
+}
+
+.clear--v4 .clear__card {
+  width: min(500px, 100%);
+  color: var(--v4-ink);
+  background: linear-gradient(155deg, #fff, #fff5c9);
+  border: 4px solid #fff;
+  border-top: 9px solid #ffce3a;
+  border-bottom: 10px solid rgba(16, 53, 84, 0.24);
+  border-radius: 31px;
+  box-shadow: var(--v4-shadow-big);
+}
+
+.clear--v4 .clear__eyebrow {
+  display: inline-flex;
+  padding: 4px 10px;
+  color: #fff;
+  background: var(--v4-blue);
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 1000;
+}
+
+.clear--v4 .clear__title {
+  color: var(--v4-ink);
+}
+
+.clear--v4 .clear__text {
+  color: var(--v4-muted);
+}
+
+.clear__score {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 13px;
+}
+
+.clear__score span {
+  padding: 7px 10px;
+  color: #644900;
+  background: #fff0b4;
+  border: 1px solid #efd066;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 1000;
+}
+
+.clear--v4 .clear__btn {
+  color: #fff;
+  background: linear-gradient(180deg, #2edebc, #12aa90);
+  border-bottom-color: #087b69;
+}
+
+@media (max-width: 760px) {
+  .help__card--v4 .help__steps {
+    grid-template-columns: 1fr;
+  }
+
+  .clear--v4 .clear__card {
+    padding: 20px 15px 16px;
+  }
+
+  .clear--v4 .clear__title {
+    font-size: 25px;
+  }
+
+  .clear__score {
+    flex-direction: column;
+  }
+}

@@ -7,10 +7,12 @@ export interface MissionSnapshot {
   lines: Line[];
   trainDefs: TrainDef[];
   towns: Town[];
+  ownedDecorations: string[];
 }
 
 export interface Mission {
   emoji: string;
+  from: string;
   title: string;
   hint: string;
   reward: number;
@@ -22,53 +24,66 @@ function servedTownCount(snapshot: MissionSnapshot): number {
   return new Set(snapshot.lines.flatMap((line) => line.stations)).size;
 }
 
+/**
+ * 1つのおねがいが1〜3分で終わり、毎回ちがう種類の喜びが返る6章構成。
+ * 待つだけの目標を減らし、つくる→見る→かざる→ひろげるを交互にする。
+ */
 export const MISSIONS: Mission[] = [
   {
-    emoji: '01',
-    title: 'はじめての せんを つくろう',
-    hint: '「新しいせんろ」を おして、町を 2つ えらぼう',
-    reward: 4000,
+    emoji: '🚉',
+    from: 'みどり町の みんな',
+    title: 'となりの町へ いきたい！',
+    hint: '「新しいせんろ」で、町を 2つ つなごう',
+    reward: 3500,
     unit: 'check',
     progress: (snapshot) => [Math.min(snapshot.lines.length, 1), 1],
   },
   {
-    emoji: '02',
-    title: 'おきゃくさんを 5人 はこぼう',
-    hint: '電車は じどうで はしるよ。町に とうちゃくするのを 見てみよう',
+    emoji: '🙂',
+    from: 'はじめての おきゃくさん',
+    title: '3人を えがおに しよう',
+    hint: '電車は じどうで はしるよ。とうちゃくを 見てみよう',
+    reward: 2000,
+    unit: 'count',
+    progress: (snapshot) => [Math.min(snapshot.totalDelivered, 3), 3],
+  },
+  {
+    emoji: '🎁',
+    from: '町の こどもたち',
+    title: '町に プレゼントを おこう',
+    hint: '「ごほうびの町」で、すきな かざりを 1つ えらぼう',
     reward: 2500,
-    unit: 'count',
-    progress: (snapshot) => [Math.min(snapshot.totalDelivered, 5), 5],
+    unit: 'check',
+    progress: (snapshot) => [Math.min(snapshot.ownedDecorations.length, 1), 1],
   },
   {
-    emoji: '03',
-    title: '電車を 2だいに しよう',
-    hint: '走っている せんを おして「電車を ふやす」を おそう',
-    reward: 3500,
-    unit: 'count',
-    progress: (snapshot) => [Math.min(snapshot.trainDefs.length, 2), 2],
-  },
-  {
-    emoji: '04',
-    title: '3つの 町へ ひろげよう',
-    hint: '「新しいせんろ」で、まだ つないでいない 町を えらぼう',
+    emoji: '🗺️',
+    from: 'ひばり村の えきちょう',
+    title: '3つの町を つなげよう',
+    hint: 'まだ つないでいない町へ、せんろを のばそう',
     reward: 4000,
     unit: 'count',
     progress: (snapshot) => [Math.min(servedTownCount(snapshot), 3), 3],
   },
   {
-    emoji: '05',
-    title: 'お金を 20,000円 ためよう',
-    hint: 'つぎの せんろを つくるか、ちょきんするか、さくせんを きめよう',
-    reward: 6000,
-    unit: 'yen',
-    progress: (snapshot) => [Math.min(snapshot.money, 20_000), 20_000],
+    emoji: '🚆',
+    from: 'でんしゃファンクラブ',
+    title: '15人を はこぼう',
+    hint: '電車を見たり、つぎの町を つないだりして まってみよう',
+    reward: 5000,
+    unit: 'count',
+    progress: (snapshot) => [Math.min(snapshot.totalDelivered, 15), 15],
   },
   {
-    emoji: '06',
-    title: 'おきゃくさんを 100人 はこぼう',
-    hint: 'ぜんぶの 町を つないで、でんしゃマスターを めざそう！',
-    reward: 0,
+    emoji: '👑',
+    from: '5つの町の みんな',
+    title: 'ぜんぶの町を つなげよう',
+    hint: 'さいごの町まで せんろを とどけよう！',
+    reward: 8000,
     unit: 'count',
-    progress: (snapshot) => [Math.min(snapshot.totalDelivered, 100), 100],
+    progress: (snapshot) => [
+      Math.min(servedTownCount(snapshot), snapshot.towns.length),
+      snapshot.towns.length,
+    ],
   },
 ];

@@ -1,28 +1,36 @@
 // ============================================================================
-// ミッションパネル(左上) — いまの目標・進捗バー・ごほうび。達成したら
-// completeMission を呼ぶ(達成判定はストア側でも再検証される)。
+// 町から届く「おねがい」— いま1つだけを大きく見せ、迷いをなくす。
 // ============================================================================
 import { useEffect } from 'react';
 import { MISSIONS } from '../data/missions';
 import { useGameStore } from '../store/gameStore';
 
 export function MissionPanel() {
-  const missionIndex = useGameStore((s) => s.missionIndex);
-  const completeMission = useGameStore((s) => s.completeMission);
-  const money = useGameStore((s) => s.money);
-  const totalDelivered = useGameStore((s) => s.totalDelivered);
-  const trackEdges = useGameStore((s) => s.trackEdges);
-  const lines = useGameStore((s) => s.lines);
-  const trainDefs = useGameStore((s) => s.trainDefs);
-  const towns = useGameStore((s) => s.towns);
-  useGameStore((s) => s.revision);
+  const missionIndex = useGameStore((state) => state.missionIndex);
+  const completeMission = useGameStore((state) => state.completeMission);
+  const money = useGameStore((state) => state.money);
+  const totalDelivered = useGameStore((state) => state.totalDelivered);
+  const trackEdges = useGameStore((state) => state.trackEdges);
+  const lines = useGameStore((state) => state.lines);
+  const trainDefs = useGameStore((state) => state.trainDefs);
+  const towns = useGameStore((state) => state.towns);
+  const ownedDecorations = useGameStore((state) => state.ownedDecorations);
+  useGameStore((state) => state.revision);
 
   const allClear = missionIndex >= MISSIONS.length;
   const mission = allClear ? null : MISSIONS[missionIndex];
   let cur = 0;
   let max = 1;
   if (mission) {
-    [cur, max] = mission.progress({ money, totalDelivered, trackEdges, lines, trainDefs, towns });
+    [cur, max] = mission.progress({
+      money,
+      totalDelivered,
+      trackEdges,
+      lines,
+      trainDefs,
+      towns,
+      ownedDecorations,
+    });
   }
   const done = mission != null && cur >= max;
 
@@ -33,42 +41,47 @@ export function MissionPanel() {
   if (allClear) {
     return (
       <div className="mission mission--clear">
-        <div className="mission__head">🏆 ぜんぶ クリア！</div>
-        <div className="mission__title">すきなように まちを つくって あそぼう！</div>
+        <span className="mission__portrait">👑</span>
+        <div>
+          <div className="mission__from">みんなから ありがとう！</div>
+          <div className="mission__title">きみだけの町を もっと そだてよう</div>
+        </div>
       </div>
     );
   }
 
   const pct = Math.round((cur / max) * 100);
-  const fmt = (v: number) => (mission!.unit === 'yen' ? `${v.toLocaleString()}円` : v);
+  const fmt = (value: number) =>
+    mission!.unit === 'yen' ? `${value.toLocaleString()}円` : `${value}`;
 
   return (
-    <div className="mission">
-      <div className="mission__head">
-        ⭐ ミッション {missionIndex + 1} / {MISSIONS.length}
-        <span className="mission__stars">
+    <section className="mission" aria-label="いまの おねがい">
+      <div className="mission__topline">
+        <span>いまの おねがい</span>
+        <b>
           {'★'.repeat(missionIndex)}
           {'☆'.repeat(MISSIONS.length - missionIndex)}
-        </span>
+        </b>
       </div>
-      <div className="mission__title">
-        <span className="mission__emoji">{mission!.emoji}</span>
-        {mission!.title}
+      <div className="mission__request">
+        <span className="mission__portrait" aria-hidden>{mission!.emoji}</span>
+        <div className="mission__copy">
+          <div className="mission__from">{mission!.from} より</div>
+          <div className="mission__title">{mission!.title}</div>
+        </div>
       </div>
       {mission!.unit !== 'check' && (
         <div className="mission__progress">
-          <div className="mission__bar">
+          <div className="mission__bar" aria-label={`${fmt(cur)} / ${fmt(max)}`}>
             <div className="mission__fill" style={{ width: `${pct}%` }} />
           </div>
-          <div className="mission__nums">
-            {fmt(cur)} / {fmt(max)}
-          </div>
+          <strong>{fmt(cur)} / {fmt(max)}</strong>
         </div>
       )}
       <div className="mission__hint">{mission!.hint}</div>
-      {mission!.reward > 0 && (
-        <div className="mission__reward">ごほうび：💰{mission!.reward.toLocaleString()}円</div>
-      )}
-    </div>
+      <div className="mission__reward">
+        できたら <b>+{mission!.reward.toLocaleString()}円</b>
+      </div>
+    </section>
   );
 }

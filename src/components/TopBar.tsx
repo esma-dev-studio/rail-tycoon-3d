@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { SECONDS_PER_DAY, SPEEDS } from '../data/config';
+import { MISSIONS } from '../data/missions';
+import { SPEEDS } from '../data/config';
 import { SAVINGS_GOALS } from '../data/progression';
 import { useGameStore } from '../store/gameStore';
 import { RailIcon, type RailIconName } from './RailIcon';
@@ -15,15 +16,14 @@ export function TopBar() {
   const money = useGameStore((state) => state.money);
   const lastIncome = useGameStore((state) => state.lastIncome);
   const savingsGoalIndex = useGameStore((state) => state.savingsGoalIndex);
-  const clock = useGameStore((state) => state.clock);
   const totalDelivered = useGameStore((state) => state.totalDelivered);
+  const missionIndex = useGameStore((state) => state.missionIndex);
   const speed = useGameStore((state) => state.speed);
   const setSpeed = useGameStore((state) => state.setSpeed);
   const muted = useGameStore((state) => state.muted);
   const toggleMute = useGameStore((state) => state.toggleMute);
   const reset = useGameStore((state) => state.reset);
 
-  const day = Math.floor(clock / SECONDS_PER_DAY) + 1;
   const goal = SAVINGS_GOALS[savingsGoalIndex];
   const savingsPct = goal ? Math.min(100, (money / goal.amount) * 100) : 100;
 
@@ -35,21 +35,21 @@ export function TopBar() {
   };
 
   return (
-    <header className="topbar topbar--control">
-      <div className="brand" aria-label="でんしゃの町">
+    <header className="topbar topbar--v4">
+      <div className="brand brand--v4" aria-label="わくわく でんしゃの町">
         <span className="brand__logo">
           <RailIcon name="train" />
         </span>
         <span className="brand__copy">
+          <small>きみが しゃちょう！</small>
           <strong>でんしゃの町</strong>
-          <small>RAIL CITY</small>
         </span>
       </div>
 
-      <div className="money-card">
+      <div className="money-card money-card--v4">
         <div className="money-card__top">
           <span className="money-card__label">
-            <RailIcon name="coin" /> お金
+            <RailIcon name="coin" /> もってる お金
           </span>
           <strong key={money}>{money.toLocaleString()}円</strong>
           {lastIncome && (
@@ -62,24 +62,27 @@ export function TopBar() {
           <div className="money-card__bar">
             <span style={{ width: `${savingsPct}%` }} />
           </div>
-          <small>{goal ? `つぎ ${goal.amount.toLocaleString()}円` : 'ぜんぶ できた！'}</small>
+          <small>
+            {goal ? `🐷 ${goal.amount.toLocaleString()}円で メダル` : '🏅 メダル ぜんぶ！'}
+          </small>
         </div>
       </div>
 
-      <div className="quick-stats">
+      <div className="quick-stats quick-stats--v4">
         <div className="quick-stat">
-          <RailIcon name="people" />
+          <span className="quick-stat__icon">🙂</span>
           <b>{totalDelivered.toLocaleString()}人</b>
-          <small>はこんだ</small>
+          <small>えがお</small>
         </div>
         <div className="quick-stat">
-          <RailIcon name="sun" />
-          <b>{day}日め</b>
-          <small>ひにち</small>
+          <span className="quick-stat__icon">⭐</span>
+          <b>{Math.min(missionIndex, MISSIONS.length)}/{MISSIONS.length}</b>
+          <small>おねがい</small>
         </div>
       </div>
 
-      <div className="speed" aria-label="ゲームの はやさ">
+      <div className="speed speed--v4" aria-label="ゲームの はやさ">
+        <span>うごき</span>
         {SPEEDS.map((value) => (
           <button
             key={value}
