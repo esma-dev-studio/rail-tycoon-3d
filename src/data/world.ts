@@ -4,6 +4,7 @@
 import { GRID_W, GRID_H } from './config';
 import { key } from '../utils/grid';
 import type { NodeKey, TerrainKind, Town } from '../types/game';
+import { TOURIST_TOWNS } from './development';
 
 // 町の名前は小2でも読めるように、ひらがな+1・2年生の漢字だけにする
 export const TOWNS: Town[] = [
@@ -15,8 +16,9 @@ export const TOWNS: Town[] = [
 ];
 
 /** 町ノード → 町ID */
-export const TOWN_BY_NODE = new Map<NodeKey, Town>(TOWNS.map((t) => [key(t.x, t.z), t]));
-export const TOWNS_BY_ID = new Map<string, Town>(TOWNS.map((t) => [t.id, t]));
+export const ALL_TOWNS = [...TOWNS, ...TOURIST_TOWNS];
+export const TOWN_BY_NODE = new Map<NodeKey, Town>(ALL_TOWNS.map((t) => [key(t.x, t.z), t]));
+export const TOWNS_BY_ID = new Map<string, Town>(ALL_TOWNS.map((t) => [t.id, t]));
 
 function mulberry32(seed: number): () => number {
   let s = seed;

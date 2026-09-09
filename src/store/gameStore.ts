@@ -4,24 +4,44 @@
 // ============================================================================
 import { create } from 'zustand';
 import { START_MONEY, TRACK_REFUND, TRAIN_COST, LINE_COLORS } from '../data/config';
-import { TOWNS, TOWNS_BY_ID, TOWN_BY_NODE, generateTerrain } from '../data/world';
-import { MISSIONS } from '../data/missions';
+import { ALL_TOWNS, TOWNS, TOWNS_BY_ID, TOWN_BY_NODE, generateTerrain } from '../data/world';
+import { availableTouristTowns, projectVisitors, sanitizeProjects, TOWN_PROJECTS, type Projects } from '../data/development';
+import {
+  MISSIONS,
+  endlessChallengeReward,
+  endlessDeliveryTarget,
+} from '../data/missions';
 import {
   SAVINGS_GOALS,
   townLevelFor,
   type TownProgress,
 } from '../data/progression';
 import { DECORATIONS_BY_ID } from '../data/decorations';
+import {
+  capacityUpgradeCost,
+  lineCapacity,
+  lineCapacityLevel,
+  lineSpeed,
+  lineSpeedLevel,
+  speedUpgradeCost,
+} from '../data/lineUpgrades';
 import { key, edgeKey, manhattanPath, neighbors4 } from '../utils/grid';
 import { bfsPath } from '../sim/pathfinding';
 import { trackEdgeCost } from '../sim/economy';
 import { sim } from '../sim/simInstance';
-import { addTrainRuntime, primeFirstTrip, removeTrainsOfLine } from '../sim/simulation';
+import {
+  addTrainRuntime,
+  applyLineRuntimeStats,
+  primeFirstRoundTrip,
+  pruneUnreachablePassengers,
+  removeTrainsOfLine,
+} from '../sim/simulation';
 import { play, isMuted, setMuted } from '../utils/sound';
 import type {
   BuildMode,
   Line,
   NodeKey,
+  Passenger,
   Selection,
   TerrainKind,
   ToastKind,
@@ -45,10 +65,16 @@ export interface GameState {
   money: number;
   bestMoney: number;
   totalDelivered: number;
+  totalTransferDelivered: number;
   totalRevenue: number;
   lastIncome: { amount: number; id: number } | null;
   clock: number;
   townProgress: Record<string, TownProgress>;
+  projects: Projects;
+  cameraReset: number;
+  saveError: boolean;
+  tourNumber: number;
+  tourStartedAt: number;
   savingsGoalIndex: number;
 
   ownedDecorations: string[];
@@ -70,6 +96,7 @@ export interface GameState {
   revision: number;
 
   missionIndex: number;
+  endlessChallengeLevel: number;
   gameCleared: boolean;
   lineSeq: number;
   trainSeq: number;
@@ -88,11 +115,19 @@ export interface GameState {
   cancelEasyRoute: () => void;
   createLine: (aTownId: string, bTownId: string) => void;
   buyTrain: (lineId: string) => void;
+  upgradeLineCapacity: (lineId: string) => void;
+  upgradeLineSpeed: (lineId: string) => void;
   buyDecoration: (id: string) => void;
+  startProject: (id: string) => void;
+  completeProject: (id: string) => void;
+  claimTour: () => void;
+  resetCamera: () => void;
+  claimStarterGrant: () => void;
   dismissCelebration: () => void;
   deleteLine: (lineId: string) => void;
-  deliver: (fare: number, townId: string) => void;
+  deliver: (fare: number, townId: string, passenger?: Passenger) => void;
   completeMission: (index: number) => void;
+  completeEndlessChallenge: (level: number) => void;
   dismissClear: () => void;
   commitTick: (dtGame: number) => void;
   setSpeed: (s: number) => void;
@@ -105,11 +140,17 @@ export interface GameState {
 const SAVE_KEY = 'rail-tycoon-3d-save-v2';
 
 interface SavedGame {
+  projects?: Projects;
+  tourNumber?: number;
+  tourStartedAt?: number;
+  gameCleared?: boolean;
   adventureVersion?: number;
   money: number;
   bestMoney: number;
   totalDelivered: number;
+  totalTransferDelivered?: number;
   totalRevenue: number;
+  endlessChallengeLevel?: number;
   clock: number;
   trackEdges: string[];
   lines: Line[];
@@ -123,7 +164,7 @@ interface SavedGame {
 }
 
 function emptyTownProgress(): Record<string, TownProgress> {
-  return Object.fromEntries(TOWNS.map((town) => [town.id, { delivered: 0, level: 1 }]));
+  return Object.fromEntries(ALL_TOWNS.map((town) => [town.id, { delivered: 0, level: 1 }]));
 }
 
 function loadSavedGame(): SavedGame | null {
@@ -141,10 +182,16 @@ function loadSavedGame(): SavedGame | null {
       return null;
     }
     return {
+      projects: sanitizeProjects(parsed.projects),
+      tourNumber: Math.max(0, Math.floor(parsed.tourNumber ?? 0)),
+      tourStartedAt: Math.max(0, parsed.tourStartedAt ?? 0),
+      gameCleared: parsed.gameCleared === true,
       money: parsed.money,
       bestMoney: parsed.bestMoney ?? parsed.money,
       totalDelivered: parsed.totalDelivered ?? 0,
+      totalTransferDelivered: parsed.totalTransferDelivered ?? 0,
       totalRevenue: parsed.totalRevenue ?? 0,
+      endlessChallengeLevel: parsed.endlessChallengeLevel ?? 1,
       clock: parsed.clock ?? 0,
       trackEdges: parsed.trackEdges,
       lines: parsed.lines,
@@ -152,8 +199,9 @@ function loadSavedGame(): SavedGame | null {
       townProgress: { ...emptyTownProgress(), ...(parsed.townProgress ?? {}) },
       savingsGoalIndex: Math.min(parsed.savingsGoalIndex ?? 0, SAVINGS_GOALS.length),
       missionIndex:
-        parsed.adventureVersion === 4
-          ? Math.min(parsed.missionIndex ?? 0, MISSIONS.length) : 0,
+        (parsed.adventureVersion ?? 0) >= 5
+          ? Math.min(parsed.missionIndex ?? 0, MISSIONS.length)
+          : Math.min(parsed.missionIndex ?? 0, 3),
       lineSeq: parsed.lineSeq ?? parsed.lines.length,
       trainSeq: parsed.trainSeq ?? parsed.trainDefs.length,
       ownedDecorations: Array.isArray(parsed.ownedDecorations)
@@ -168,11 +216,17 @@ function loadSavedGame(): SavedGame | null {
 function makeInitialState(loadSave = true) {
   const saved = loadSave ? loadSavedGame() : null;
   return {
-    towns: TOWNS,
+    towns: [...TOWNS, ...availableTouristTowns(saved?.projects ?? {})],
+    projects: saved?.projects ?? {},
+    tourNumber: saved?.tourNumber ?? 0,
+    tourStartedAt: saved?.tourStartedAt ?? 0,
+    cameraReset: 0,
+    saveError: false,
     terrain: generateTerrain(),
     money: saved?.money ?? START_MONEY,
     bestMoney: saved?.bestMoney ?? START_MONEY,
     totalDelivered: saved?.totalDelivered ?? 0,
+    totalTransferDelivered: saved?.totalTransferDelivered ?? 0,
     totalRevenue: saved?.totalRevenue ?? 0,
     lastIncome: null as { amount: number; id: number } | null,
     clock: saved?.clock ?? 0,
@@ -195,7 +249,8 @@ function makeInitialState(loadSave = true) {
     toast: null as { msg: string; kind: ToastKind; id: number } | null,
     revision: 0,
     missionIndex: saved?.missionIndex ?? 0,
-    gameCleared: false,
+    endlessChallengeLevel: saved?.endlessChallengeLevel ?? 1,
+    gameCleared: saved?.gameCleared ?? false,
     lineSeq: saved?.lineSeq ?? 0,
     trainSeq: saved?.trainSeq ?? 0,
     toastSeq: 0,
@@ -247,6 +302,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   townClick: (id) => {
+    if (!get().towns.some((town) => town.id === id)) return;
     const { buildMode, lineAnchorTown, routeStartTown } = get();
     if (buildMode === 'route') {
       if (!routeStartTown) {
@@ -326,6 +382,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
     for (const ln of broken) removeTrainsOfLine(sim, ln.id);
     const nextLines = lines.filter((ln) => !broken.includes(ln));
+    pruneUnreachablePassengers(sim, nextLines);
     const nextTrainDefs = trainDefs.filter((td) => nextLines.some((l) => l.id === td.lineId));
     const refund = Math.round(removedCost * TRACK_REFUND);
     play('demolish');
@@ -348,6 +405,11 @@ export const useGameStore = create<GameState>((set, get) => ({
     const start = state.routeStartTown ? TOWNS_BY_ID.get(state.routeStartTown) : null;
     const end = state.routeEndTown ? TOWNS_BY_ID.get(state.routeEndTown) : null;
     if (!start || !end || start.id === end.id) return;
+    if (![start, end].every((town) => state.towns.some((t) => t.id === town.id))) return;
+    if (state.lines.some((line) => line.stations.includes(start.id) && line.stations.includes(end.id))) {
+      get().pushToast('この2つの町には もう電車があるよ。「電車」で ふやせるよ');
+      return;
+    }
 
     const path = manhattanPath(key(start.x, start.z), key(end.x, end.z));
     const newEdges: string[] = [];
@@ -377,18 +439,30 @@ export const useGameStore = create<GameState>((set, get) => ({
     const trainId = `tr${trainNumber}`;
     const color = LINE_COLORS[(lineNumber - 1) % LINE_COLORS.length];
     const stations = path
-      .filter((node) => TOWN_BY_NODE.has(node))
+      .filter((node) => state.towns.some((town) => key(town.x, town.z) === node))
       .map((node) => TOWN_BY_NODE.get(node)!.id);
     const line: Line = {
       id: lineId,
-      name: `${start.name}・${end.name}せん`,
+      name: `${start.name} ↔ ${end.name}`,
       color,
       pathNodes: path,
       stations,
+      capacityLevel: 1,
+      speedLevel: 1,
     };
 
-    addTrainRuntime(sim, trainId, lineId, path, stations, color, true);
-    primeFirstTrip(sim, trainId, start.id, end.id);
+    addTrainRuntime(
+      sim,
+      trainId,
+      lineId,
+      path,
+      stations,
+      color,
+      true,
+      lineCapacity(line),
+      lineSpeed(line),
+    );
+    primeFirstRoundTrip(sim, trainId, start.id, end.id);
     play('whistle');
     set({
       trackEdges: nextEdges,
@@ -405,7 +479,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         id: Date.now(),
         eyebrow: 'せんろ かんせい！',
         title: line.name,
-        message: `${start.name}から ${end.name}へ、3人の おきゃくさんを のせて しゅっぱつ！`,
+        message: `${start.name}と ${end.name}を いったり きたり！ 帰りの おきゃくさんも まっているよ。`,
         emoji: '🚆',
         color,
       },
@@ -418,8 +492,55 @@ export const useGameStore = create<GameState>((set, get) => ({
     set({ routeStartTown: null, routeEndTown: null });
   },
 
+  startProject: (id) => {
+    const s = get();
+    const p = TOWN_PROJECTS.find((project) => project.id === id);
+    if (!p || s.projects[id] || !s.towns.some((t) => t.id === p.townId)) return;
+    if (!s.lines.some((l) => l.stations.includes(p.townId))) {
+      s.pushToast('まず この町に せんろを つなごう', 'bad');
+      return;
+    }
+    if (s.money < p.cost) { s.pushToast(`あと ${(p.cost - s.money).toLocaleString()}円 ためよう`, 'bad'); return; }
+    play('build');
+    set({ money: s.money - p.cost, projects: { ...s.projects, [id]: { startedAt: s.townProgress[p.townId]?.delivered ?? 0, completed: false } } });
+    s.pushToast(`${p.name}を つくりはじめたよ！ 電車で ${p.visitors}人 とどけよう`, 'good');
+  },
+  completeProject: (id) => {
+    const s = get();
+    const p = TOWN_PROJECTS.find((project) => project.id === id);
+    if (!p || !s.projects[id] || s.projects[id].completed) return;
+    if (projectVisitors(p, s.projects[id], s.townProgress[p.townId]?.delivered ?? 0) < p.visitors) return;
+    const projects = { ...s.projects, [id]: { ...s.projects[id], completed: true } };
+    const towns = [...TOWNS, ...availableTouristTowns(projects)];
+    const newTown = towns.find((town) => !s.towns.some((old) => old.id === town.id));
+    const savings = savingsAfter(s.money + p.reward, s.savingsGoalIndex);
+    for (const town of towns) if (!sim.waiting.has(town.id)) sim.waiting.set(town.id, []);
+    play('fanfare');
+    set({ projects, towns, money: savings.money, bestMoney: Math.max(s.bestMoney, savings.money), savingsGoalIndex: savings.index,
+      celebration: { id: Date.now(), eyebrow: '町の ゆめが かなった！', title: p.name, message: newTown ? `${newTown.name}が 地図に あらわれたよ！ せんろを のばして 会いにいこう。` : '町に あたらしい けしきが できたよ！ これからも おきゃくさんが あそびに来るよ。', emoji: '✦', color: p.color },
+    });
+  },
+  claimTour: () => {
+    const s = get();
+    const town = ALL_TOWNS[s.tourNumber % ALL_TOWNS.length];
+    if (s.missionIndex < MISSIONS.length || (s.townProgress[town.id]?.delivered ?? 0) - s.tourStartedAt < 12) return;
+    const nextTown = ALL_TOWNS[(s.tourNumber + 1) % ALL_TOWNS.length];
+    const savings = savingsAfter(s.money + 5000, s.savingsGoalIndex);
+    set({ tourNumber: s.tourNumber + 1, tourStartedAt: s.townProgress[nextTown.id]?.delivered ?? 0, money: savings.money, bestMoney: Math.max(s.bestMoney, savings.money), savingsGoalIndex: savings.index });
+    play('fanfare');
+    s.pushToast('おでかけ便 たっせい！ +5,000円。つぎの町へ いこう', 'good');
+  },
+  resetCamera: () => set((s) => ({ cameraReset: s.cameraReset + 1 })),
+  claimStarterGrant: () => {
+    const s = get();
+    if (s.lines.length || s.money >= 7000) return;
+    set({ money: START_MONEY });
+    s.pushToast('はじめの お金を とどけたよ！ 町を2つ つなごう', 'good');
+  },
+
   buyDecoration: (id) => {
     const state = get();
+    if (!state.lines.length) { state.pushToast('まず せんろを1本 つくろう。プレゼントは そのあと！'); return; }
     const item = DECORATIONS_BY_ID.get(id);
     if (!item || state.ownedDecorations.includes(id)) return;
     if (state.money < item.price) {
@@ -454,8 +575,10 @@ export const useGameStore = create<GameState>((set, get) => ({
     const a = TOWNS_BY_ID.get(aTownId);
     const b = TOWNS_BY_ID.get(bTownId);
     if (!a || !b || a.id === b.id) return;
+    if (![a, b].every((town) => get().towns.some((t) => t.id === town.id))) return;
 
     const { trackEdges, lines, lineSeq, money } = get();
+    if (lines.some((line) => line.stations.includes(aTownId) && line.stations.includes(bTownId))) return;
     const path = bfsPath(trackEdges, key(a.x, a.z), key(b.x, b.z));
     if (!path) {
       play('error');
@@ -467,16 +590,18 @@ export const useGameStore = create<GameState>((set, get) => ({
       get().pushToast(`💸 電車には ${TRAIN_COST.toLocaleString()}円 ひつようだよ`, 'bad');
       return;
     }
-    const stations = path.filter((n) => TOWN_BY_NODE.has(n)).map((n) => TOWN_BY_NODE.get(n)!.id);
+    const stations = path.filter((n) => get().towns.some((town) => key(town.x, town.z) === n)).map((n) => TOWN_BY_NODE.get(n)!.id);
     const seq = lineSeq + 1;
     const id = `ln${seq}`;
     const color = LINE_COLORS[(seq - 1) % LINE_COLORS.length];
     const line: Line = {
       id,
-      name: `${a.name}・${b.name}せん`,
+      name: `${a.name} ↔ ${b.name}`,
       color,
       pathNodes: path,
       stations,
+      capacityLevel: 1,
+      speedLevel: 1,
     };
     set({ lines: [...lines, line], lineSeq: seq, selection: { type: 'line', id } });
     get().buyTrain(id);
@@ -495,7 +620,17 @@ export const useGameStore = create<GameState>((set, get) => ({
     const seq = trainSeq + 1;
     const id = `tr${seq}`;
     const atStart = trainDefs.filter((td) => td.lineId === lineId).length % 2 === 0;
-    addTrainRuntime(sim, id, lineId, line.pathNodes, line.stations, line.color, atStart);
+    addTrainRuntime(
+      sim,
+      id,
+      lineId,
+      line.pathNodes,
+      line.stations,
+      line.color,
+      atStart,
+      lineCapacity(line),
+      lineSpeed(line),
+    );
     play('whistle');
     set({
       trainDefs: [...trainDefs, { id, lineId, color: line.color }],
@@ -504,17 +639,95 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
   },
 
+  upgradeLineCapacity: (lineId) => {
+    const state = get();
+    const line = state.lines.find((candidate) => candidate.id === lineId);
+    if (!line) return;
+    if (state.missionIndex < 6) {
+      get().pushToast('🔒 第1しょうを クリアすると つかえるよ', 'info');
+      return;
+    }
+    const cost = capacityUpgradeCost(line);
+    if (cost == null) {
+      get().pushToast('🌟 この路線は いちばん長い電車だよ', 'good');
+      return;
+    }
+    if (state.money < cost) {
+      play('error');
+      get().pushToast(`あと ${(cost - state.money).toLocaleString()}円で 長い電車に できるよ`, 'bad');
+      return;
+    }
+    const upgraded: Line = {
+      ...line,
+      capacityLevel: lineCapacityLevel(line) + 1,
+    };
+    applyLineRuntimeStats(sim, lineId, lineCapacity(upgraded), lineSpeed(upgraded));
+    play('fanfare');
+    set({
+      lines: state.lines.map((candidate) => candidate.id === lineId ? upgraded : candidate),
+      money: state.money - cost,
+      celebration: {
+        id: Date.now(),
+        eyebrow: '電車が ながくなった！',
+        title: `${line.name}・長さレベル${upgraded.capacityLevel}`,
+        message: `1だいに ${lineCapacity(upgraded)}人まで のれるようになったよ。`,
+        emoji: '🚃',
+        color: line.color,
+      },
+    });
+  },
+
+  upgradeLineSpeed: (lineId) => {
+    const state = get();
+    const line = state.lines.find((candidate) => candidate.id === lineId);
+    if (!line) return;
+    if (state.missionIndex < 6) {
+      get().pushToast('🔒 第1しょうを クリアすると つかえるよ', 'info');
+      return;
+    }
+    const cost = speedUpgradeCost(line);
+    if (cost == null) {
+      get().pushToast('🌟 この路線は いちばん速い電車だよ', 'good');
+      return;
+    }
+    if (state.money < cost) {
+      play('error');
+      get().pushToast(`あと ${(cost - state.money).toLocaleString()}円で 速く できるよ`, 'bad');
+      return;
+    }
+    const upgraded: Line = {
+      ...line,
+      speedLevel: lineSpeedLevel(line) + 1,
+    };
+    applyLineRuntimeStats(sim, lineId, lineCapacity(upgraded), lineSpeed(upgraded));
+    play('fanfare');
+    set({
+      lines: state.lines.map((candidate) => candidate.id === lineId ? upgraded : candidate),
+      money: state.money - cost,
+      celebration: {
+        id: Date.now(),
+        eyebrow: 'スピードアップ！',
+        title: `${line.name}・速さレベル${upgraded.speedLevel}`,
+        message: '駅へ はやく ついて、まっている人を どんどん はこべるよ。',
+        emoji: '⚡',
+        color: line.color,
+      },
+    });
+  },
+
   deleteLine: (lineId) => {
     const { lines, trainDefs, selection } = get();
     removeTrainsOfLine(sim, lineId);
+    const nextLines = lines.filter((line) => line.id !== lineId);
+    pruneUnreachablePassengers(sim, nextLines);
     set({
-      lines: lines.filter((l) => l.id !== lineId),
+      lines: nextLines,
       trainDefs: trainDefs.filter((td) => td.lineId !== lineId),
       selection: selection && selection.type === 'line' && selection.id === lineId ? null : selection,
     });
   },
 
-  deliver: (fare, townId) => {
+  deliver: (fare, townId, passenger) => {
     const s = get();
     const previous = s.townProgress[townId] ?? { delivered: 0, level: 1 };
     const delivered = previous.delivered + 1;
@@ -532,6 +745,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       money: savings.money,
       bestMoney: Math.max(s.bestMoney, savings.money),
       totalDelivered: s.totalDelivered + 1,
+      totalTransferDelivered: s.totalTransferDelivered + (passenger && passenger.transfers > 0 ? 1 : 0),
       totalRevenue: s.totalRevenue + fare,
       lastIncome: { amount: fare, id: s.totalDelivered + 1 },
       townProgress: progress,
@@ -546,36 +760,45 @@ export const useGameStore = create<GameState>((set, get) => ({
       );
     } else if (leveledUp && town) {
       get().pushToast(`🏙️ ${town.name}が レベル${level}に なった！`, 'good');
+    } else if (passenger && passenger.transfers > 0 && s.totalTransferDelivered === 0) {
+      const origin = TOWNS_BY_ID.get(passenger.fromTownId);
+      const destination = TOWNS_BY_ID.get(passenger.toTownId);
+      get().pushToast(
+        `🔁 のりかえ せいこう！ ${origin?.name ?? '町'}から ${destination?.name ?? '町'}へ とうちゃく`,
+        'good',
+      );
     }
   },
 
   completeMission: (index) => {
     const s = get();
-    if (s.missionIndex !== index || index >= MISSIONS.length) return;
+    if (s.gameCleared || s.missionIndex !== index || index < 0 || index >= MISSIONS.length) return;
     const mission = MISSIONS[index];
     const [cur, max] = mission.progress({
       money: s.money,
       totalDelivered: s.totalDelivered,
+      totalTransferDelivered: s.totalTransferDelivered,
       trackEdges: s.trackEdges,
       lines: s.lines,
       trainDefs: s.trainDefs,
-      towns: s.towns,
+      towns: TOWNS,
+      townProgress: s.townProgress,
       ownedDecorations: s.ownedDecorations,
     });
     if (cur < max) return;
 
     const savings = savingsAfter(s.money + mission.reward, s.savingsGoalIndex);
-    const isLast = index === MISSIONS.length - 1;
     play('fanfare');
     set({
       missionIndex: index + 1,
+      ...(index + 1 === MISSIONS.length ? { tourStartedAt: s.townProgress.t_midori?.delivered ?? 0, tourNumber: 0 } : {}),
       money: savings.money,
       bestMoney: Math.max(s.bestMoney, savings.money),
       savingsGoalIndex: savings.index,
-      celebration: isLast ? null : s.celebration,
-      gameCleared: isLast || s.gameCleared,
+      celebration: mission.chapterEnd ? null : s.celebration,
+      gameCleared: Boolean(mission.chapterEnd),
     });
-    if (!isLast) {
+    if (!mission.chapterEnd) {
       get().pushToast(
         mission.reward > 0
           ? `⭐ ミッションクリア！ +${mission.reward.toLocaleString()}円`
@@ -583,6 +806,32 @@ export const useGameStore = create<GameState>((set, get) => ({
         'good',
       );
     }
+  },
+
+  completeEndlessChallenge: (level) => {
+    const s = get();
+    if (
+      s.missionIndex < MISSIONS.length
+      || s.endlessChallengeLevel !== level
+      || s.totalDelivered < endlessDeliveryTarget(level)
+    ) return;
+    const reward = endlessChallengeReward(level);
+    const savings = savingsAfter(s.money + reward, s.savingsGoalIndex);
+    play('fanfare');
+    set({
+      endlessChallengeLevel: level + 1,
+      money: savings.money,
+      bestMoney: Math.max(s.bestMoney, savings.money),
+      savingsGoalIndex: savings.index,
+      celebration: {
+        id: Date.now(),
+        eyebrow: `ずっとチャレンジ ${level} クリア！`,
+        title: `${endlessDeliveryTarget(level)}人を はこんだ！`,
+        message: `ごほうび ${reward.toLocaleString()}円！ つぎは ${endlessDeliveryTarget(level + 1)}人を めざそう。`,
+        emoji: '🏅',
+        color: '#ffbd3d',
+      },
+    });
   },
 
   dismissClear: () => set({ gameCleared: false }),
@@ -606,6 +855,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   reset: () => {
     if (typeof window !== 'undefined') window.localStorage.removeItem(SAVE_KEY);
     sim.trains.clear();
+    sim.waiting.clear();
     for (const town of TOWNS) sim.waiting.set(town.id, []);
     sim.spawnAcc = 0;
     sim.pseq = 0;
@@ -628,21 +878,30 @@ for (const train of restored.trainDefs) {
     line.stations,
     train.color,
     count % 2 === 0,
+    lineCapacity(line),
+    lineSpeed(line),
   );
   restoredPerLine.set(line.id, count + 1);
 }
 
 let saveTimer: ReturnType<typeof setTimeout> | undefined;
-useGameStore.subscribe((state) => {
-  if (typeof window === 'undefined') return;
-  if (saveTimer) return;
-  saveTimer = setTimeout(() => {
+export function flushSave() {
+    if (typeof window === 'undefined') return;
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = undefined;
+    const state = useGameStore.getState();
     const saved: SavedGame = {
-      adventureVersion: 4,
+      adventureVersion: 7,
+      projects: state.projects,
+      tourNumber: state.tourNumber,
+      tourStartedAt: state.tourStartedAt,
+      gameCleared: state.gameCleared,
       money: state.money,
       bestMoney: state.bestMoney,
       totalDelivered: state.totalDelivered,
+      totalTransferDelivered: state.totalTransferDelivered,
       totalRevenue: state.totalRevenue,
+      endlessChallengeLevel: state.endlessChallengeLevel,
       clock: state.clock,
       trackEdges: [...state.trackEdges],
       lines: state.lines,
@@ -656,9 +915,16 @@ useGameStore.subscribe((state) => {
     };
     try {
       window.localStorage.setItem(SAVE_KEY, JSON.stringify(saved));
+      if (state.saveError) useGameStore.setState({ saveError: false });
     } catch {
-      // プライベートモード等で保存できなくても、ゲームはそのまま続けられる。
+      if (!state.saveError) useGameStore.setState({ saveError: true });
     }
-    saveTimer = undefined;
-  }, 500);
+}
+useGameStore.subscribe(() => {
+  if (typeof window === 'undefined' || saveTimer) return;
+  saveTimer = setTimeout(flushSave, 500);
 });
+if (typeof window !== 'undefined') {
+  window.addEventListener('pagehide', flushSave);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) flushSave(); });
+}

@@ -6,6 +6,8 @@ import type { Group } from 'three';
 import { sim } from '../sim/simInstance';
 import { useGameStore } from '../store/gameStore';
 import type { TrainDef } from '../types/game';
+import { lineCapacityLevel } from '../data/lineUpgrades';
+import { nodeWorld } from '../utils/grid';
 
 function shade(hex: string, amount: number): string {
   const color = hex.replace('#', '');
@@ -107,6 +109,9 @@ function Car({
 
 function TrainMesh({ definition }: { definition: TrainDef }) {
   const ref = useRef<Group>(null);
+  const cars = useRef<(Group | null)[]>([]);
+  const line = useGameStore((s) => s.lines.find((l) => l.id === definition.lineId));
+  const carCount = line ? lineCapacityLevel(line) + 2 : 3;
   const trainClick = useGameStore((state) => state.trainClick);
   const selection = useGameStore((state) => state.selection);
   const selected = selection?.type === 'train' && selection.id === definition.id;
@@ -117,7 +122,17 @@ function TrainMesh({ definition }: { definition: TrainDef }) {
     if (!runtime || !group) return;
     group.visible = true;
     group.position.set(runtime.x, 0.21, runtime.z);
-    group.rotation.y = runtime.angle;
+    group.rotation.y = 0;
+    cars.current.forEach((car, i) => {
+      if (!car) return;
+      const at = runtime.segIndex + runtime.dir * runtime.segT + runtime.dir * (.28 - i * .46);
+      const segment = Math.max(0, Math.min(runtime.pathNodes.length - 2, Math.floor(at)));
+      const a = nodeWorld(runtime.pathNodes[segment]);
+      const b = nodeWorld(runtime.pathNodes[segment + 1]);
+      const t = at - segment;
+      car.position.set(a[0] + (b[0] - a[0]) * t - runtime.x, 0, a[2] + (b[2] - a[2]) * t - runtime.z);
+      car.rotation.y = Math.atan2((b[0] - a[0]) * runtime.dir, (b[2] - a[2]) * runtime.dir);
+    });
     if (selected) {
       const pulse = 1 + Math.sin(state.clock.elapsedTime * 4) * 0.06;
       group.scale.setScalar(pulse);
@@ -152,13 +167,7 @@ function TrainMesh({ definition }: { definition: TrainDef }) {
           <meshBasicMaterial color="#35f0cc" transparent opacity={0.75} />
         </mesh>
       )}
-      <Car z={0.28} color={definition.color} lead />
-      <Car z={-0.18} color={body} />
-      <Car z={-0.64} color={body} />
-      <mesh position={[0, -0.13, -0.18]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[0.45, 1.2]} />
-        <meshBasicMaterial color={definition.color} transparent opacity={0.15} />
-      </mesh>
+      {Array.from({ length: carCount }, (_, i) => <group key={i} ref={(node) => { cars.current[i] = node; }}><Car z={0} color={i === 0 ? definition.color : body} lead={i === 0} /></group>)}
     </group>
   );
 }

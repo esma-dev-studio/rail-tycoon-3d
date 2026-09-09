@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { MISSIONS } from '../data/missions';
 import { SPEEDS } from '../data/config';
 import { SAVINGS_GOALS } from '../data/progression';
+import { largestConnectedTownCount } from '../sim/network';
 import { useGameStore } from '../store/gameStore';
 import { RailIcon, type RailIconName } from './RailIcon';
 
@@ -17,7 +17,8 @@ export function TopBar() {
   const lastIncome = useGameStore((state) => state.lastIncome);
   const savingsGoalIndex = useGameStore((state) => state.savingsGoalIndex);
   const totalDelivered = useGameStore((state) => state.totalDelivered);
-  const missionIndex = useGameStore((state) => state.missionIndex);
+  const lines = useGameStore((state) => state.lines);
+  const towns = useGameStore((state) => state.towns);
   const speed = useGameStore((state) => state.speed);
   const setSpeed = useGameStore((state) => state.setSpeed);
   const muted = useGameStore((state) => state.muted);
@@ -26,6 +27,7 @@ export function TopBar() {
 
   const goal = SAVINGS_GOALS[savingsGoalIndex];
   const savingsPct = goal ? Math.min(100, (money / goal.amount) * 100) : 100;
+  const connectedTowns = largestConnectedTownCount(lines, towns);
 
   const onReset = () => {
     if (window.confirm('いままでの きろくを けして、さいしょから あそぶ？')) {
@@ -41,7 +43,7 @@ export function TopBar() {
           <RailIcon name="train" />
         </span>
         <span className="brand__copy">
-          <small>きみが しゃちょう！</small>
+          <small>町をつないで とどけよう</small>
           <strong>でんしゃの町</strong>
         </span>
       </div>
@@ -74,10 +76,10 @@ export function TopBar() {
           <b>{totalDelivered.toLocaleString()}人</b>
           <small>えがお</small>
         </div>
-        <div className="quick-stat">
-          <span className="quick-stat__icon">⭐</span>
-          <b>{Math.min(missionIndex, MISSIONS.length)}/{MISSIONS.length}</b>
-          <small>おねがい</small>
+        <div className="quick-stat quick-stat--network">
+          <span className="quick-stat__icon">🚉</span>
+          <b>{connectedTowns}/{towns.length}</b>
+          <small>1つにつながった町</small>
         </div>
       </div>
 

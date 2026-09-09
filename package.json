@@ -3,12 +3,16 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Rail Tycoon 3D — 線路を敷き列車を走らせ乗客をさばく3D鉄道経営シミュ",
+  "description": "町をつなぎ、電車と町を育て続ける小学生向け3D鉄道ゲーム",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "verify:network": "node --experimental-strip-types scripts/verify-network.ts",
+    "verify:growth": "node --experimental-strip-types scripts/verify-growth.ts",
+    "verify:adventure": "node scripts/verify-adventure.mjs",
+    "verify:browser": "node scripts/verify-browser.mjs"
   },
   "dependencies": {
     "@react-three/drei": "9.109.2",

@@ -1,0 +1,138 @@
+/* V5 — 双方向運転と自動乗り換えを、子どもにも見える言葉にする。 */
+
+.quick-stat--network {
+  min-width: 88px;
+}
+
+.quick-stat--network small {
+  max-width: 72px;
+  line-height: 1.05;
+  text-align: center;
+}
+
+.route-ticket__network {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 8px 0 9px;
+  padding: 8px 11px;
+  color: #0b6b5b;
+  background: linear-gradient(135deg, #dcfaef, #e8f8ff);
+  border: 1px solid #9de5cf;
+  border-radius: 12px;
+}
+
+.route-ticket__network b {
+  flex: none;
+  font-size: 10px;
+  font-weight: 1000;
+}
+
+.route-ticket__network span {
+  overflow: hidden;
+  color: #315d72;
+  font-size: 9px;
+  font-weight: 900;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.town-label__transfer {
+  padding: 2px 6px;
+  color: #5b3fc1;
+  background: #eee9ff;
+  border: 1px solid #c9bcff;
+  border-radius: 999px;
+  font-size: 8px;
+}
+
+.town-label__wait {
+  max-width: 190px;
+  text-align: center;
+  white-space: normal;
+}
+
+.insp__transfer-badge,
+.insp__direction {
+  margin: 8px 0;
+  padding: 8px 10px;
+  color: #5b3fc1;
+  background: #f0ecff;
+  border: 1px solid #d3c7ff;
+  border-radius: 11px;
+  font-size: 11px;
+  font-weight: 1000;
+  text-align: center;
+}
+
+.insp__direction {
+  color: #08705d;
+  background: #dcfaef;
+  border-color: #9de5cf;
+}
+
+.insp__row--sub > span:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.insp__row--sub small {
+  color: #6b58ba;
+  font-size: 8px;
+  font-weight: 900;
+}
+
+.welcome-v4__symbol {
+  font-size: 23px;
+  font-weight: 1000;
+}
+
+.welcome-v4__first--network {
+  flex-wrap: wrap;
+}
+
+.welcome-v4__first--network small {
+  width: 100%;
+  color: #315d72;
+  font-size: 9px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.help__step-icon--text {
+  font-size: 24px;
+  font-weight: 1000;
+}
+
+@media (max-width: 760px) {
+  .route-ticket__network {
+    gap: 5px;
+    margin: 6px 0;
+    padding: 6px 8px;
+  }
+
+  .route-ticket__network b {
+    font-size: 8px;
+  }
+
+  .route-ticket__network span {
+    font-size: 7px;
+  }
+
+  .town-label__wait {
+    max-width: 145px;
+  }
+
+  .welcome-v4__first--network small {
+    font-size: 7px;
+  }
+}
+
+@media (max-height: 700px) and (max-width: 760px) {
+  .welcome-v4__first--network small {
+    display: none;
+  }
+}

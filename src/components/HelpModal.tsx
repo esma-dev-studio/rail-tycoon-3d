@@ -25,41 +25,41 @@ export function HelpModal() {
               <li>
                 <span className="help__step-icon"><RailIcon name="route" /></span>
                 <div>
-                  <b>1　町を 2つ えらぶ</b>
-                  <p>下の「新しいせんろ」を おして、町の名前を 2つ おそう。</p>
-                  <small>ねだんを見てから つくれるので、まちがえても だいじょうぶ！</small>
+                  <b>1　まず 5つの町を つなぐ</b>
+                  <p>「新しいせんろ」で、町の名前を 2つ おそう。</p>
+                  <small>5つつないだら、第1しょうクリア。ゲームは まだ つづくよ！</small>
                 </div>
               </li>
               <li>
-                <span className="help__step-icon"><RailIcon name="people" /></span>
+                <span className="help__step-icon help__step-icon--text">↔</span>
                 <div>
-                  <b>2　電車と えがおを 見る</b>
-                  <p>さいしょから 3人が のっているよ。町につくと お金が ふえる！</p>
-                  <small>町のふきだしには、みんなの いきたい町が 出るよ</small>
+                  <b>2　行きも 帰りも、のりかえも じどう</b>
+                  <p>A―Bと B―Cがあれば、AからCへ Bで のりかえるよ。</p>
+                  <small>きみは 町と町を つなげればOK！</small>
                 </div>
               </li>
               <li>
-                <span className="help__step-icon"><RailIcon name="gift" /></span>
+                <span className="help__step-icon help__step-icon--text">😵</span>
                 <div>
-                  <b>3　町に プレゼント</b>
-                  <p>「ごほうびの町」で かざりを かうと、3Dの町に あらわれるよ。</p>
-                  <small>せんろを ひろげると、えきスタンプも あつまる！</small>
+                  <b>3　こんでいる路線を 見つける</b>
+                  <p>路線を おすと「すいている・ちょっとこんでる・大こんざつ」が わかるよ。</p>
+                  <small>大こんざつなら、電車を ふやそう</small>
                 </div>
               </li>
               <li>
-                <span className="help__step-icon"><RailIcon name="tools" /></span>
+                <span className="help__step-icon help__step-icon--text">🛠️</span>
                 <div>
-                  <b>もっと じゆうに</b>
-                  <p>なれたら「じゆう」で、せんろを 1マスずつ つくれるよ。</p>
+                  <b>4　電車と 町を そだてる</b>
+                  <p>長い電車や 速い電車にして、町を レベル6まで そだてよう。</p>
                   <small>
                     せんろ {TRACK_COST}円 ／ はし {BRIDGE_COST}円 ／ 電車 {TRAIN_COST.toLocaleString()}円
                   </small>
                 </div>
               </li>
             </ol>
-            <p className="help__camera">1本ゆびで まわす　・　2本ゆびで ちかづく</p>
+            <p className="help__camera">3つの章のあとも、ずっとチャレンジが つづくよ</p>
             <button className="btn btn--primary help__close" onClick={() => setOpen(false)}>
-              やってみる！
+              わかった！ やってみる
             </button>
           </div>
         </div>

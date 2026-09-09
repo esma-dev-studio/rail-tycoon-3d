@@ -17,11 +17,10 @@ export function FareFloats() {
           key={f.id}
           position={[f.x, 1.15, f.z]}
           center
-          distanceFactor={12}
           zIndexRange={[14, 0]}
           wrapperClass="html-pass-through"
         >
-          <div className="fare-float">💰 +{f.amount.toLocaleString()}円</div>
+          <div className="fare-float">+{f.amount.toLocaleString()}円</div>
         </Html>
       ))}
     </group>

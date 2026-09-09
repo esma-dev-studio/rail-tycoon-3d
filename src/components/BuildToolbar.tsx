@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { TRACK_COST, BRIDGE_COST, TRAIN_COST } from '../data/config';
-import { TOWNS_BY_ID } from '../data/world';
+import { TOWN_BY_NODE, TOWNS, TOWNS_BY_ID } from '../data/world';
 import { edgeKey, key, manhattanPath } from '../utils/grid';
 import { isBridgeEdge, trackEdgeCost } from '../sim/economy';
 import { useGameStore } from '../store/gameStore';
@@ -13,6 +13,7 @@ export function BuildToolbar() {
   const setBuildMode = useGameStore((state) => state.setBuildMode);
   const anchorNode = useGameStore((state) => state.anchorNode);
   const hoverNode = useGameStore((state) => state.hoverNode);
+  const townClick = useGameStore((state) => state.townClick);
   const routeStartTown = useGameStore((state) => state.routeStartTown);
   const routeEndTown = useGameStore((state) => state.routeEndTown);
   const trackEdges = useGameStore((state) => state.trackEdges);
@@ -27,6 +28,10 @@ export function BuildToolbar() {
     const end = routeEndTown ? TOWNS_BY_ID.get(routeEndTown) : null;
     if (!start || !end) return null;
     const path = manhattanPath(key(start.x, start.z), key(end.x, end.z));
+    const stops = path.flatMap((node) => {
+      const town = TOWN_BY_NODE.get(node);
+      return town ? [town] : [];
+    });
     let newTiles = 0;
     let bridges = 0;
     let trackPrice = 0;
@@ -42,6 +47,7 @@ export function BuildToolbar() {
       start,
       end,
       newTiles,
+      stops,
       bridges,
       trackPrice,
       total,
@@ -90,6 +96,29 @@ export function BuildToolbar() {
             </span>
           </div>
 
+          {!routePlan && (
+            <div className="route-town-picker">
+              <b>
+                {routeStartTown
+                  ? '② つなぐ町を もう1つ えらぼう'
+                  : '① はじめの町を えらぼう'}
+              </b>
+              <div>
+                {TOWNS.map((town) => (
+                  <button
+                    className={routeStartTown === town.id ? 'is-selected' : ''}
+                    key={town.id}
+                    onClick={() => townClick(town.id)}
+                  >
+                    <i style={{ background: town.color }} />
+                    {town.name}
+                    {routeStartTown === town.id && <small>ここから</small>}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {routePlan && (
             <div className="route-ticket">
               <div className="route-ticket__line">
@@ -102,6 +131,12 @@ export function BuildToolbar() {
                 <span className="route-ticket__station">{routePlan.end.name}</span>
               </div>
               <div className="route-ticket__facts">
+              <div className="route-ticket__network">
+                <b>↔ どちら向きにも はしるよ</b>
+                <span>
+                  とまる町：{routePlan.stops.map((town) => town.name).join(' ↔ ')}
+                </span>
+              </div>
                 <span>
                   <small>せんろ</small>
                   <b>{routePlan.newTiles}マス</b>

@@ -8,10 +8,10 @@ export interface TownProgress {
   level: number;
 }
 
-export const MAX_TOWN_LEVEL = 4;
+export const MAX_TOWN_LEVEL = 6;
 
 /** そのレベルになるために、町へはこぶ人数 */
-export const TOWN_LEVEL_REQUIREMENTS = [0, 4, 12, 25] as const;
+export const TOWN_LEVEL_REQUIREMENTS = [0, 4, 12, 25, 45, 70] as const;
 
 export function townLevelFor(delivered: number): number {
   let level = 1;

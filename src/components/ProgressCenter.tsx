@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react';
 import { DECORATIONS } from '../data/decorations';
 import {
+  BADGES,
   MAX_TOWN_LEVEL,
   SAVINGS_GOALS,
   nextTownLevelRequirement,
 } from '../data/progression';
+import { largestConnectedTownCount } from '../sim/network';
 import { useGameStore } from '../store/gameStore';
 import { RailIcon } from './RailIcon';
 
@@ -18,6 +20,8 @@ export function ProgressCenter() {
   const money = useGameStore((state) => state.money);
   const savingsGoalIndex = useGameStore((state) => state.savingsGoalIndex);
   const lines = useGameStore((state) => state.lines);
+  const trackEdges = useGameStore((state) => state.trackEdges);
+  const totalDelivered = useGameStore((state) => state.totalDelivered);
   const ownedDecorations = useGameStore((state) => state.ownedDecorations);
   const buyDecoration = useGameStore((state) => state.buyDecoration);
 
@@ -25,6 +29,14 @@ export function ProgressCenter() {
     () => new Set(lines.flatMap((line) => line.stations)),
     [lines],
   );
+  const earnedBadgeIds = new Set([
+    ...(trackEdges.size > 0 ? ['first-track'] : []),
+    ...(lines.length > 0 ? ['first-line'] : []),
+    ...(totalDelivered >= 10 ? ['ten-riders'] : []),
+    ...(Object.values(townProgress).some((progress) => progress.level >= 2) ? ['growing-town'] : []),
+    ...(savingsGoalIndex >= 1 ? ['saver'] : []),
+    ...(largestConnectedTownCount(lines, towns) === towns.length ? ['all-towns'] : []),
+  ]);
   const firstAffordable = DECORATIONS.find(
     (item) => !ownedDecorations.includes(item.id) && money >= item.price,
   )?.id;
@@ -77,7 +89,7 @@ export function ProgressCenter() {
                 role="tab"
                 aria-selected={tab === 'stamps'}
               >
-                <RailIcon name="stamp" /> えきスタンプ
+                <RailIcon name="stamp" /> スタンプ・バッジ
               </button>
               <button
                 className={tab === 'towns' ? 'is-active' : ''}
@@ -169,6 +181,24 @@ export function ProgressCenter() {
                       </div>
                     );
                   })}
+                </div>
+                <div className="badge-book">
+                  <div className="badge-book__title">
+                    <b>🏅 しゃちょうバッジ</b>
+                    <span>{earnedBadgeIds.size}/{BADGES.length}</span>
+                  </div>
+                  <div className="badge-grid">
+                    {BADGES.map((badge) => {
+                      const done = earnedBadgeIds.has(badge.id);
+                      return (
+                        <div className={`badge ${done ? 'is-done' : ''}`} key={badge.id}>
+                          <span>{done ? badge.emoji : '？'}</span>
+                          <b>{done ? badge.name : 'まだ ひみつ'}</b>
+                          <small>{badge.hint}</small>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             )}

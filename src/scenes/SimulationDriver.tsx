@@ -6,6 +6,7 @@ import { pushFareFloat } from '../sim/fareFloats';
 import { TOWNS_BY_ID } from '../data/world';
 import { worldPos } from '../utils/grid';
 import { useGameStore } from '../store/gameStore';
+import { townAttraction } from '../data/development';
 
 const UI_INTERVAL = 0.2;
 
@@ -19,10 +20,10 @@ export function SimulationDriver() {
     const dtGame = clamped * state.speed;
 
     if (dtGame > 0) {
-      spawnPassengers(sim, dtGame);
-      stepTrains(sim, dtGame, (fare, townId) => {
+      spawnPassengers(sim, dtGame, state.lines, Math.random, state.towns, (id) => townAttraction(id, state.projects));
+      stepTrains(sim, dtGame, state.lines, (fare, townId, passenger) => {
         // 毎フレームの途中でも最新のストアを使う。
-        useGameStore.getState().deliver(fare, townId);
+        useGameStore.getState().deliver(fare, townId, passenger);
         const town = TOWNS_BY_ID.get(townId);
         if (town) {
           const world = worldPos(town.x, town.z);
