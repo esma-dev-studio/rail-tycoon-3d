@@ -37,6 +37,8 @@ import {
   removeTrainsOfLine,
 } from '../sim/simulation';
 import { play, isMuted, setMuted } from '../utils/sound';
+import { findTownRoute } from '../sim/network';
+import { MAX_WAITING } from '../data/config';
 import type {
   BuildMode,
   Line,
@@ -68,6 +70,7 @@ export interface GameState {
   totalTransferDelivered: number;
   totalRevenue: number;
   lastIncome: { amount: number; id: number } | null;
+  lastArrival: { townId: string; count: number; fare: number; id: number; at: number } | null;
   clock: number;
   townProgress: Record<string, TownProgress>;
   projects: Projects;
@@ -123,6 +126,7 @@ export interface GameState {
   claimTour: () => void;
   resetCamera: () => void;
   claimStarterGrant: () => void;
+  inviteVisitors: (townId: string) => void;
   dismissCelebration: () => void;
   deleteLine: (lineId: string) => void;
   deliver: (fare: number, townId: string, passenger?: Passenger) => void;
@@ -229,6 +233,7 @@ function makeInitialState(loadSave = true) {
     totalTransferDelivered: saved?.totalTransferDelivered ?? 0,
     totalRevenue: saved?.totalRevenue ?? 0,
     lastIncome: null as { amount: number; id: number } | null,
+    lastArrival: null as GameState['lastArrival'],
     clock: saved?.clock ?? 0,
     townProgress: saved?.townProgress ?? emptyTownProgress(),
     savingsGoalIndex: saved?.savingsGoalIndex ?? 0,
@@ -505,6 +510,26 @@ export const useGameStore = create<GameState>((set, get) => ({
     set({ money: s.money - p.cost, projects: { ...s.projects, [id]: { startedAt: s.townProgress[p.townId]?.delivered ?? 0, completed: false } } });
     s.pushToast(`${p.name}を つくりはじめたよ！ 電車で ${p.visitors}人 とどけよう`, 'good');
   },
+  inviteVisitors: (townId) => {
+    const s = get();
+    if (!s.towns.some((t) => t.id === townId)) return;
+    const project = TOWN_PROJECTS.find((p) => p.townId === townId);
+    if (!project || !s.projects[project.id]) return;
+    const pending = [...sim.waiting.values()].flat().filter((p) => p.toTownId === townId).length
+      + [...sim.trains.values()].flatMap((t) => t.load).filter((p) => p.toTownId === townId).length;
+    const origins = s.towns.filter((t) => t.id !== townId && findTownRoute(s.lines, t.id, townId));
+    let invited = 0;
+    for (const origin of origins) {
+      const queue = sim.waiting.get(origin.id) ?? [];
+      while (invited < Math.max(0, 6 - pending) && queue.length < MAX_WAITING) {
+        queue.push({ id: ++sim.pseq, fromTownId: origin.id, toTownId: townId, transfers: 0 });
+        invited++;
+      }
+      sim.waiting.set(origin.id, queue);
+    }
+    set({ revision: s.revision + 1 });
+    s.pushToast(invited ? `${invited}人が 駅に あつまった！ 電車で 来るよ` : 'おきゃくさんは 電車を まっているよ', 'good');
+  },
   completeProject: (id) => {
     const s = get();
     const p = TOWN_PROJECTS.find((project) => project.id === id);
@@ -748,6 +773,10 @@ export const useGameStore = create<GameState>((set, get) => ({
       totalTransferDelivered: s.totalTransferDelivered + (passenger && passenger.transfers > 0 ? 1 : 0),
       totalRevenue: s.totalRevenue + fare,
       lastIncome: { amount: fare, id: s.totalDelivered + 1 },
+      lastArrival: { townId,
+        count: s.lastArrival?.townId === townId && Date.now() - s.lastArrival.at < 350 ? s.lastArrival.count + 1 : 1,
+        fare: s.lastArrival?.townId === townId && Date.now() - s.lastArrival.at < 350 ? s.lastArrival.fare + fare : fare,
+        at: Date.now(), id: s.totalDelivered + 1 },
       townProgress: progress,
       savingsGoalIndex: savings.index,
     });
@@ -784,6 +813,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       towns: TOWNS,
       townProgress: s.townProgress,
       ownedDecorations: s.ownedDecorations,
+      projects: s.projects,
     });
     if (cur < max) return;
 

@@ -51,6 +51,15 @@ try {
   assert.equal(s().money,paid,'project construction is charged once');
   assert.equal(projectVisitors(p,s().projects[p.id],s().townProgress[p.townId].delivered),0,'old arrivals do not build a new project');
   assert.equal(townAttraction(p.townId,s().projects),4);
+  const beforeInviteMoney=s().money;
+  const beforeInviteDelivered=s().totalDelivered;
+  s().inviteVisitors('t_midori');
+  const pendingInvites=()=>[...sim.waiting.values()].flat().filter(p=>p.toTownId==='t_midori').length;
+  assert.equal(pendingInvites(),6,'invited visitors really wait at another station');
+  s().inviteVisitors('t_midori');
+  assert.equal(pendingInvites(),6,'repeated taps cannot flood the station');
+  assert.equal(s().money,beforeInviteMoney,'invitations are free');
+  assert.equal(s().totalDelivered,beforeInviteDelivered,'invitations do not grant arrivals or revenue');
   s().completeProject(p.id);
   assert.equal(s().projects[p.id].completed,false);
   for(let i=0;i<p.visitors;i++)s().deliver(100,p.townId);

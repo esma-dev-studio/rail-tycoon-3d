@@ -14,9 +14,9 @@ export function GameScene() {
   const clearSelection = useGameStore((s) => s.clearSelection);
   return <Canvas shadows orthographic dpr={[1, 1.5]} gl={{ antialias: true }}
     camera={{ position: [14, 20, 17], zoom: 28, near: .1, far: 100 }}
-    fallback={<div className="empty-state"><p>このブラウザでは 3Dを 表示できないようです。<br />Chromeや Edgeで ひらいてみてね。</p></div>}
+    fallback={<div className="empty-state"><p>このブラウザでは 3Dを 表示できないようです。<br />おうちの人と、ブラウザが あたらしいか たしかめてね。</p></div>}
     onPointerMissed={clearSelection}>
-    <color attach="background" args={['#e8eee5']} />
+    <color attach="background" args={['#e2f3fc']} />
     <hemisphereLight intensity={1.15} color="#fffaf0" groundColor="#a7bba0" />
     <ambientLight intensity={.5} />
     <directionalLight position={[-5, 18, 10]} intensity={1.7} color="#fff1d4" castShadow

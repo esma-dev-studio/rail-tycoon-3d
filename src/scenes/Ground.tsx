@@ -114,13 +114,13 @@ export function Ground() {
       {/* ベース面 */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
         <planeGeometry args={[GRID_W + 2, GRID_H + 2]} />
-        <meshStandardMaterial color="#a6bf88" roughness={1} />
+        <meshStandardMaterial color="#84bb70" roughness={1} />
       </mesh>
 
       {/* ジオラマの土台(側面が土に見える箱) */}
       <mesh position={[0, -0.63, 0]}>
         <boxGeometry args={[GRID_W + 2, 1.2, GRID_H + 2]} />
-        <meshStandardMaterial color="#cbb48a" roughness={0.95} />
+        <meshStandardMaterial color="#b69a69" roughness={0.95} />
       </mesh>
 
       {/* タイルグリッド */}

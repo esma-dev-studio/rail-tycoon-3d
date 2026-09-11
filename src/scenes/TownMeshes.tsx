@@ -11,6 +11,8 @@ import type { Town } from '../types/game';
 import { TOWN_PROJECTS } from '../data/development';
 import { ProjectLandmark } from './ProjectLandmark';
 import { Reading } from '../components/Reading';
+import { visibleMapTowns } from '../data/playGuide';
+import { useStationGesture } from '../components/useStationGesture';
 
 function hash(str: string): number {
   let value = 2166136261;
@@ -303,6 +305,7 @@ function TownGift({ kind, color }: { kind: DecorationKind; color: string }) {
 }
 
 function TownItem({ town }: { town: Town }) {
+  const gesture = useStationGesture(town.id);
   const buildMode = useGameStore((state) => state.buildMode);
   const tileClick = useGameStore((state) => state.tileClick);
   const townClick = useGameStore((state) => state.townClick);
@@ -407,14 +410,15 @@ function TownItem({ town }: { town: Town }) {
       <WaitingPeople count={waiting} />
 
       <Html
-        position={[0, progress.level >= 4 || gifts.some((gift) => gift.kind === 'tower') ? 2.1 : 1.6, 0]}
+        position={[0, progress.level >= 4 || gifts.some((gift) => gift.kind === 'tower') ? 3.1 : 2.6, 0]}
         center
         zIndexRange={[12, 0]}
         wrapperClass="html-pass-through"
       >
         <button
+          data-town-id={town.id}
+          {...gesture}
           aria-label={town.name + 'をえらぶ'}
-          onClick={(event) => { event.stopPropagation(); townClick(town.id); }}
           className={`town-label${highlight ? ' is-active' : ''}${
             isRouteStart ? ' is-route-start' : isRouteEnd ? ' is-route-end' : ''
           }`}
@@ -439,7 +443,7 @@ function TownItem({ town }: { town: Town }) {
 }
 
 export function TownMeshes() {
-  const towns = useGameStore((state) => state.towns);
+  const towns = useGameStore(visibleMapTowns);
   return (
     <group>
       {towns.map((town) => (

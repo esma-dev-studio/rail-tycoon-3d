@@ -13,6 +13,7 @@ export interface MissionSnapshot {
   towns: Town[];
   townProgress: Record<string, TownProgress>;
   ownedDecorations: string[];
+  projects?: Record<string, { completed: boolean }>;
 }
 
 export interface Mission {
@@ -90,11 +91,11 @@ export const MISSIONS: Mission[] = [
     chapter: 1,
     emoji: '🎁',
     from: '町の こどもたち',
-    title: '町に プレゼントを おこう',
-    hint: '「町づくり」の下にある プレゼントを 1つ えらぼう',
+    title: '町の ゆめを 1つ かなえよう',
+    hint: '「町をそだてる」で たてものを つくろう。おきゃくさんも よべるよ',
     reward: 2500,
     unit: 'check',
-    progress: (snapshot) => [Math.min(snapshot.ownedDecorations.length, 1), 1],
+    progress: (snapshot) => [Math.min(Math.max(snapshot.ownedDecorations.length, Object.values(snapshot.projects ?? {}).filter((p) => p.completed).length), 1), 1],
   },
   {
     chapter: 1,
@@ -181,11 +182,11 @@ export const MISSIONS: Mission[] = [
     chapter: 3,
     emoji: '🎡',
     from: '町の こどもたち',
-    title: 'プレゼントを 4こに しよう',
-    hint: 'はこんで ためたお金で、町の けしきを かえよう',
+    title: '3つの町の ゆめを かなえよう',
+    hint: 'お金を つかって 工事を はじめ、おきゃくさんを よぼう',
     reward: 8000,
     unit: 'count',
-    progress: (snapshot) => [Math.min(snapshot.ownedDecorations.length, 4), 4],
+    progress: (snapshot) => [Math.min(Math.max(snapshot.ownedDecorations.length >= 4 ? 3 : 0, Object.values(snapshot.projects ?? {}).filter((p) => p.completed).length), 3), 3],
   },
   {
     chapter: 3,

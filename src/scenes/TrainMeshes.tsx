@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { RoundedBox } from '@react-three/drei';
+import { RoundedBox, Html } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import type { ThreeEvent } from '@react-three/fiber';
 import type { Group } from 'three';
@@ -8,6 +8,11 @@ import { useGameStore } from '../store/gameStore';
 import type { TrainDef } from '../types/game';
 import { lineCapacityLevel } from '../data/lineUpgrades';
 import { nodeWorld } from '../utils/grid';
+import { isFirstJourney } from '../data/playGuide';
+import { TOWNS_BY_ID } from '../data/world';
+import { Reading } from '../components/Reading';
+import { RailIcon } from '../components/RailIcon';
+import { nextTrainStopTownId } from '../sim/simulation';
 
 function shade(hex: string, amount: number): string {
   const color = hex.replace('#', '');
@@ -177,8 +182,21 @@ export function TrainMeshes() {
   return (
     <group>
       {trainDefs.map((definition) => (
-        <TrainMesh key={definition.id} definition={definition} />
+        <group key={definition.id}><TrainMesh definition={definition} /><PassengerBadge definition={definition} /></group>
       ))}
     </group>
   );
+}
+
+function PassengerBadge({definition}:{definition:TrainDef}) {
+  const ref=useRef<Group>(null);
+  const intro=useGameStore(isFirstJourney);
+  const selection=useGameStore(s=>s.selection);
+  useGameStore(s=>s.revision);
+  const train=sim.trains.get(definition.id);
+  const selected=(selection?.type==='train'&&selection.id===definition.id)||(selection?.type==='line'&&selection.id===definition.lineId);
+  useFrame(()=>{const t=sim.trains.get(definition.id);if(t&&ref.current)ref.current.position.set(t.x,1.65,t.z);});
+  if(!train||(!intro&&!selected)||train.dwell>0||train.load.length===0)return null;
+  const dest=TOWNS_BY_ID.get(nextTrainStopTownId(train)??'');
+  return <group ref={ref}><Html center zIndexRange={[15,0]} wrapperClass="html-pass-through"><div className="train-passenger-badge"><RailIcon name="people"/>{train.load.length}人<small>→ <Reading text={dest?.name??''}/></small></div></Html></group>;
 }
